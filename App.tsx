@@ -1,0 +1,433 @@
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Project, ProjectStatus, TaskStatus, Toast, User, Activity, Customer, ActivityDeepLink, Prices } from './types';
+import { MOCK_USERS, DEFAULT_PRICES } from './constants';
+import Dashboard from './components/Dashboard';
+import ProjectDetails from './components/ProjectDetails';
+import Navbar from './components/Navbar';
+import ProfileModal from './components/ProfileModal';
+import Login from './components/Login';
+import AdminSettings from './components/AdminSettings';
+import CustomerManagement from './components/CustomerManagement';
+import Planning from './components/Planning';
+import { CheckCircle, XCircle, Info, X, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns';
+
+// Sleutels voor localStorage
+const STORAGE_KEYS = {
+  PROJECTS: 'projectdroid_projects',
+  CUSTOMERS: 'projectdroid_customers',
+  ACTIVITIES: 'projectdroid_activities',
+  USERS: 'projectdroid_users',
+  CURRENT_USER: 'projectdroid_current_user',
+  DARK_MODE: 'projectdroid_dark_mode',
+  PRICES: 'projectdroid_prices'
+};
+
+const App: React.FC = () => {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [users, setUsers] = useState<User[]>(MOCK_USERS);
+  const [prices, setPrices] = useState<Prices>(DEFAULT_PRICES);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [activeView, setActiveView] = useState<'dashboard' | 'customers' | 'planning'>('dashboard');
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [deepLink, setDeepLink] = useState<ActivityDeepLink | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showAdminSettings, setShowAdminSettings] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+
+  // Initial load from localStorage
+  useEffect(() => {
+    const storedProjects = localStorage.getItem(STORAGE_KEYS.PROJECTS);
+    const storedCustomers = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
+    const storedActivities = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
+    const storedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
+    const storedCurrentUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    const storedDarkMode = localStorage.getItem(STORAGE_KEYS.DARK_MODE);
+    const storedPrices = localStorage.getItem(STORAGE_KEYS.PRICES);
+
+    if (storedProjects) setProjects(JSON.parse(storedProjects));
+    if (storedCustomers) setCustomers(JSON.parse(storedCustomers));
+    if (storedActivities) setActivities(JSON.parse(storedActivities));
+    if (storedPrices) setPrices(JSON.parse(storedPrices));
+    
+    let loadedUsers = MOCK_USERS;
+    if (storedUsers) {
+      loadedUsers = JSON.parse(storedUsers);
+      setUsers(loadedUsers);
+    }
+
+    const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
+    if (isElectron) {
+      // Find wouter@webdroids.nl in loadedUsers or MOCK_USERS, or fallback to any admin, or first user
+      let adminUser = loadedUsers.find(u => u.email === 'wouter@webdroids.nl');
+      
+      if (!adminUser) {
+        // If not in loadedUsers, try MOCK_USERS
+        adminUser = MOCK_USERS.find(u => u.email === 'wouter@webdroids.nl');
+        // If we found it in MOCK_USERS but it wasn't in loadedUsers, add it to users
+        if (adminUser) {
+          setUsers(prev => {
+            const newUsers = [...prev, adminUser!];
+            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(newUsers));
+            return newUsers;
+          });
+        }
+      }
+      
+      if (!adminUser) {
+        adminUser = loadedUsers.find(u => u.role === 'admin') || loadedUsers[0];
+      }
+      
+      if (adminUser) {
+        setCurrentUser(adminUser);
+      }
+    } else {
+      // If online version, fetch data from server API if we have a stored user
+      if (storedCurrentUser) {
+        const parsedUser = JSON.parse(storedCurrentUser);
+        if (parsedUser.email && parsedUser.password) {
+          fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: parsedUser.email, password: parsedUser.password })
+          })
+            .then(res => {
+              if (res.ok) return res.json();
+              throw new Error('Invalid credentials');
+            })
+            .then(({ user, data }) => {
+              if (data.projects) setProjects(data.projects);
+              if (data.customers) setCustomers(data.customers);
+              if (data.activities) setActivities(data.activities);
+              if (data.users) setUsers(data.users);
+              setCurrentUser(user);
+            })
+            .catch(err => {
+              console.error('Error fetching initial data:', err);
+              setCurrentUser(null);
+              localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+            });
+        }
+      }
+    }
+    
+    if (storedDarkMode) setIsDarkMode(JSON.parse(storedDarkMode));
+  }, []);
+
+  // Save to localStorage when state changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
+    localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
+    localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities));
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    localStorage.setItem(STORAGE_KEYS.DARK_MODE, JSON.stringify(isDarkMode));
+    localStorage.setItem(STORAGE_KEYS.PRICES, JSON.stringify(prices));
+    if (currentUser) {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    }
+  }, [projects, customers, activities, users, currentUser, isDarkMode, prices]);
+
+  // Handle dark mode class on document element
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const addToast = useCallback((message: string, type: Toast['type'] = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3000);
+  }, []);
+
+  const triggerConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
+    setConfirmDialog({ title, message, onConfirm });
+  }, []);
+
+  const logActivity = useCallback((type: Activity['type'], title: string, options: Partial<Activity> = {}) => {
+    if (!currentUser) return;
+    const newActivity: Activity = {
+      id: Math.random().toString(36).substring(2, 9),
+      type,
+      title,
+      userId: currentUser.id,
+      timestamp: new Date().toISOString(),
+      ...options
+    };
+    setActivities(prev => [newActivity, ...prev].slice(0, 100));
+  }, [currentUser]);
+
+  const [loginError, setLoginError] = useState('');
+
+  const handleLogin = async (email: string, password: string) => {
+    const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
+    
+    if (isElectron) {
+      const user = users.find(u => u.email === email && u.password === password);
+      if (user) {
+        setCurrentUser(user);
+        setLoginError('');
+        addToast(`Welkom terug, ${user.name}!`);
+      } else {
+        setLoginError('Onjuist e-mailadres of wachtwoord.');
+      }
+    } else {
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        if (response.ok) {
+          const { user, data } = await response.json();
+          if (data.projects) setProjects(data.projects);
+          if (data.customers) setCustomers(data.customers);
+          if (data.activities) setActivities(data.activities);
+          if (data.users) setUsers(data.users);
+          
+          setCurrentUser(user);
+          setLoginError('');
+          addToast(`Welkom terug, ${user.name}!`);
+        } else {
+          setLoginError('Onjuist e-mailadres of wachtwoord.');
+        }
+      } catch (err) {
+        setLoginError('Kan geen verbinding maken met de server.');
+      }
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setShowProfileModal(false);
+    addToast('Je bent uitgelogd', 'info');
+  };
+
+  const handleCreateProject = (projectData: Omit<Project, 'id' | 'createdAt'>) => {
+    const newProject: Project = {
+      ...projectData,
+      id: Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString(),
+    };
+    setProjects(prev => [newProject, ...prev]);
+    logActivity('project_created', `Project aangemaakt: ${newProject.name}`, { projectId: newProject.id, projectName: newProject.name });
+    addToast('Project aangemaakt');
+  };
+
+  const handleUpdateProject = (updatedProject: Project) => {
+    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+  };
+
+  const handleDeleteProject = (id: string) => {
+    const project = projects.find(p => p.id === id);
+    triggerConfirm('Project verwijderen?', `Weet je zeker dat je project '${project?.name}' wilt verwijderen?`, () => {
+      setProjects(prev => prev.filter(p => p.id !== id));
+      logActivity('project_deleted', `Project verwijderd: ${project?.name}`);
+      addToast('Project verwijderd', 'danger');
+    });
+  };
+
+  const handleCreateCustomer = (customerData: Omit<Customer, 'id' | 'createdAt'>) => {
+    const newCustomer: Customer = {
+      ...customerData,
+      id: Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString(),
+    };
+    setCustomers(prev => [newCustomer, ...prev]);
+    logActivity('customer_created', `Klant toegevoegd: ${newCustomer.name}`);
+    addToast('Klant toegevoegd');
+  };
+
+  const handleUpdateCustomer = (updatedCustomer: Customer) => {
+    setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+    addToast('Klant bijgewerkt');
+  };
+
+  const handleDeleteCustomer = (id: string) => {
+    const customer = customers.find(c => c.id === id);
+    triggerConfirm('Klant verwijderen?', `Weet je zeker dat je klant '${customer?.name}' wilt verwijderen?`, () => {
+      setCustomers(prev => prev.filter(c => c.id !== id));
+      addToast('Klant verwijderd', 'danger');
+    });
+  };
+
+  if (!currentUser) {
+    // Check if running in Electron
+    const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
+    if (isElectron && users.length > 0) {
+      // Auto-login as the first admin user
+      const adminUser = users.find(u => u.email === 'wouter@webdroids.nl') || users.find(u => u.role === 'admin') || users[0];
+      setCurrentUser(adminUser);
+      return null; // Render nothing while state updates
+    }
+    return <Login onLogin={handleLogin} error={loginError} />;
+  }
+
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFF] dark:bg-dark transition-colors duration-300">
+      <Navbar 
+        onLogoClick={() => { setSelectedProjectId(null); setActiveView('dashboard'); }}
+        isDarkMode={isDarkMode}
+        onToggleMode={() => setIsDarkMode(!isDarkMode)}
+        projectName={selectedProject?.name}
+        user={currentUser}
+        onProfileClick={() => setShowProfileModal(true)}
+        onCreateProjectClick={() => { setSelectedProjectId(null); setActiveView('dashboard'); }}
+        activeView={activeView}
+        onSwitchView={view => { setSelectedProjectId(null); setActiveView(view); }}
+      />
+
+      <main className="max-w-[2400px] mx-auto px-4 md:px-8 py-8 md:py-12 pb-32 md:pb-12">
+        {selectedProjectId && selectedProject ? (
+          <ProjectDetails 
+            project={selectedProject}
+            customers={customers}
+            users={users}
+            prices={prices}
+            onUpdate={handleUpdateProject}
+            onBack={() => setSelectedProjectId(null)}
+            addToast={addToast}
+            triggerConfirm={triggerConfirm}
+            logActivity={logActivity}
+            deepLink={deepLink}
+            onClearDeepLink={() => setDeepLink(null)}
+          />
+        ) : activeView === 'dashboard' ? (
+          <Dashboard 
+            projects={projects}
+            customers={customers}
+            activities={activities}
+            users={users}
+            prices={prices}
+            onCreateProject={handleCreateProject}
+            onDeleteProject={handleDeleteProject}
+            onSelectProject={(id, dl) => { setSelectedProjectId(id); if (dl) setDeepLink(dl); }}
+          />
+        ) : activeView === 'planning' ? (
+          <Planning
+            projects={projects}
+            customers={customers}
+            users={users}
+            onUpdateProject={handleUpdateProject}
+            onSelectProject={(id) => { setSelectedProjectId(id); }}
+            addToast={addToast}
+          />
+        ) : (
+          <CustomerManagement 
+            customers={customers}
+            projects={projects}
+            onCreateCustomer={handleCreateCustomer}
+            onUpdateCustomer={handleUpdateCustomer}
+            onDeleteCustomer={handleDeleteCustomer}
+            onSelectProject={id => { setSelectedProjectId(id); setActiveView('dashboard'); }}
+            triggerConfirm={triggerConfirm}
+          />
+        )}
+      </main>
+
+      {/* Toast notifications */}
+      <div className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-[9999] space-y-3">
+        {toasts.map(toast => (
+          <div 
+            key={toast.id}
+            className={`flex items-center space-x-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 animate-in slide-in-from-right-10 duration-300 ${
+              toast.type === 'success' ? 'bg-white dark:bg-dark-card border-success text-success-hover' :
+              toast.type === 'danger' ? 'bg-white dark:bg-dark-card border-danger text-danger' :
+              'bg-white dark:bg-dark-card border-info text-info'
+            }`}
+          >
+            {toast.type === 'success' ? <CheckCircle className="w-5 h-5" /> : toast.type === 'danger' ? <XCircle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
+            <span className="text-sm font-black tracking-tight">{toast.message}</span>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-4 opacity-40 hover:opacity-100 transition-opacity"><X className="w-4 h-4" /></button>
+          </div>
+        ))}
+      </div>
+
+      {/* Confirmation Dialog */}
+      {confirmDialog && (
+        <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-dark/80 backdrop-blur-xl animate-in fade-in">
+          <div className="bg-white dark:bg-dark-card border border-white/10 rounded-[40px] p-10 max-w-md w-full shadow-3xl animate-in zoom-in-95">
+            <div className="flex items-center space-x-4 text-danger mb-6">
+              <div className="p-3 bg-danger/10 rounded-2xl"><AlertTriangle className="w-8 h-8" /></div>
+              <h3 className="text-2xl font-black tracking-tight">{confirmDialog.title}</h3>
+            </div>
+            <p className="text-text-muted dark:text-light/70 font-medium mb-10 leading-relaxed">{confirmDialog.message}</p>
+            <div className="flex space-x-4">
+              <button onClick={() => setConfirmDialog(null)} className="flex-1 py-4 rounded-2xl border-2 border-slate-100 dark:border-white/10 font-black text-xs uppercase tracking-widest text-text-muted dark:text-white">Annuleren</button>
+              <button 
+                onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}
+                className="flex-1 py-4 rounded-2xl bg-danger text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-danger/20"
+              >
+                Bevestigen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProfileModal && (
+        <ProfileModal 
+          user={currentUser}
+          onSave={updatedUser => { 
+            setCurrentUser(updatedUser); 
+            setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u)); 
+            setShowProfileModal(false); 
+            addToast('Profiel bijgewerkt'); 
+          }}
+          onClose={() => setShowProfileModal(false)}
+          onLogout={handleLogout}
+          onOpenAdmin={currentUser.role === 'admin' ? () => { setShowProfileModal(false); setShowAdminSettings(true); } : undefined}
+        />
+      )}
+
+      {showAdminSettings && (
+        <AdminSettings 
+          users={users}
+          projects={projects}
+          prices={prices}
+          onUpdatePrices={setPrices}
+          onClose={() => setShowAdminSettings(false)}
+          onAddUser={u => { const newUser = { ...u, id: Math.random().toString(36).substring(2, 9) }; setUsers(prev => [...prev, newUser]); addToast('Gebruiker toegevoegd'); }}
+          onUpdateUser={u => { setUsers(prev => prev.map(user => user.id === u.id ? u : user)); if (currentUser?.id === u.id) setCurrentUser(u); addToast('Gebruiker bijgewerkt'); }}
+          onDeleteUser={id => { setUsers(prev => prev.filter(u => u.id !== id)); addToast('Gebruiker verwijderd', 'danger'); }}
+          onUpdateProject={handleUpdateProject}
+          onBackup={() => {
+            const data = { projects, customers, activities, users };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `projectdroid-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
+            a.click();
+            addToast('Backup gedownload');
+          }}
+          onRestore={data => {
+            if (data.projects) setProjects(data.projects);
+            if (data.customers) setCustomers(data.customers);
+            if (data.activities) setActivities(data.activities);
+            if (data.users) setUsers(data.users);
+            addToast('Database hersteld');
+          }}
+          triggerConfirm={triggerConfirm}
+          getFullState={() => ({ projects, customers, activities, users })}
+        />
+      )}
+    </div>
+  );
+};
+
+export default App;

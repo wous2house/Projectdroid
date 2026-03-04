@@ -1,0 +1,16 @@
+{
+  "projects": [],
+  "activities": [],
+  "customers": [],
+  "users": [
+    {
+      "id": "u-wouter",
+      "name": "Wouter",
+      "role": "admin",
+      "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Wouter",
+      "title": "Hoofdbeheerder",
+      "email": "wouter@webdroids.nl",
+      "password": "F$dgh7(bsh<Cdj2"
+    }
+  ]
+}

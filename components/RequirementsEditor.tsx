@@ -1,0 +1,426 @@
+import React, { useState } from 'react';
+import { Check, Edit3, MessageSquare } from 'lucide-react';
+import { Prices } from '../types';
+
+export const calculatePrice = (requirements: string[], notes: Record<string, string>, prices: Prices) => {
+  let oneTime = 0;
+  let recurring = 0;
+
+  const isLanding = requirements.includes('type_landing');
+  const hasMaintenance = requirements.includes('onderhoud');
+  const replacePlugins = isLanding && hasMaintenance;
+
+  if (requirements.includes('type_werken_bij')) {
+    const size = notes['type_werken_bij_size'];
+    if (size === 'Small') oneTime += prices.type_werken_bij_small;
+    if (size === 'Medium') oneTime += prices.type_werken_bij_medium;
+    if (size === 'Large') oneTime += prices.type_werken_bij_large;
+  }
+
+  if (isLanding) {
+    const size = notes['type_landing_size'];
+    if (size === 'Standaard') oneTime += prices.type_landing_standaard;
+    if (size === 'Premium') oneTime += prices.type_landing_premium;
+  }
+
+  if (!isLanding) {
+    if (requirements.includes('wp_elementor')) recurring += prices.wp_elementor;
+    if (requirements.includes('wp_forms')) recurring += prices.wp_forms;
+    if (requirements.includes('wp_acf')) recurring += prices.wp_acf;
+    if (requirements.includes('wp_code')) recurring += prices.wp_code;
+  }
+
+  let pluginRecurring = 0;
+  if (requirements.includes('wp_jet')) pluginRecurring += prices.wp_jet;
+  if (requirements.includes('wp_smashballoon_pro')) pluginRecurring += prices.wp_smashballoon_pro;
+  if (requirements.includes('wp_api_to_posts')) {
+    oneTime += prices.wp_api_to_posts_onetime || 650;
+    pluginRecurring += prices.wp_api_to_posts;
+  }
+
+  let maintenanceRecurring = 0;
+  if (hasMaintenance) {
+    const tier = notes['onderhoud_tier'];
+    if (tier === 'Licht') maintenanceRecurring += prices.onderhoud_light;
+    if (tier === 'Gemiddeld') maintenanceRecurring += prices.onderhoud_medium;
+    if (tier === 'Sterk') maintenanceRecurring += prices.onderhoud_strong;
+  }
+
+  if (replacePlugins) {
+    recurring += maintenanceRecurring;
+  } else {
+    recurring += pluginRecurring + maintenanceRecurring;
+  }
+
+  return { oneTime, recurring, total: oneTime + recurring };
+};
+
+export const getBudgetBreakdown = (requirements: string[], notes: Record<string, string>, prices: Prices) => {
+  const breakdown: { label: string; price: number; isRecurring: boolean }[] = [];
+  const isLanding = requirements.includes('type_landing');
+  const hasMaintenance = requirements.includes('onderhoud');
+  const replacePlugins = isLanding && hasMaintenance;
+
+  if (requirements.includes('type_werken_bij')) {
+    const size = notes['type_werken_bij_size'];
+    if (size === 'Small') breakdown.push({ label: `Werken-bij site (Small)`, price: prices.type_werken_bij_small, isRecurring: false });
+    if (size === 'Medium') breakdown.push({ label: `Werken-bij site (Medium)`, price: prices.type_werken_bij_medium, isRecurring: false });
+    if (size === 'Large') breakdown.push({ label: `Werken-bij site (Large)`, price: prices.type_werken_bij_large, isRecurring: false });
+  }
+
+  if (isLanding) {
+    const size = notes['type_landing_size'];
+    if (size === 'Standaard') breakdown.push({ label: `Landingspagina (Standaard)`, price: prices.type_landing_standaard, isRecurring: false });
+    if (size === 'Premium') breakdown.push({ label: `Landingspagina (Premium)`, price: prices.type_landing_premium, isRecurring: false });
+  }
+
+  if (!isLanding) {
+    if (requirements.includes('wp_elementor')) breakdown.push({ label: 'Elementor', price: prices.wp_elementor, isRecurring: true });
+    if (requirements.includes('wp_acf')) breakdown.push({ label: 'Advanced Custom Fields', price: prices.wp_acf, isRecurring: true });
+    if (requirements.includes('wp_code')) breakdown.push({ label: 'WP Code', price: prices.wp_code, isRecurring: true });
+    if (requirements.includes('wp_forms')) breakdown.push({ label: 'WP Forms', price: prices.wp_forms, isRecurring: true });
+  } else {
+    if (requirements.includes('wp_elementor')) breakdown.push({ label: 'Elementor (Inclusief)', price: 0, isRecurring: true });
+    if (requirements.includes('wp_acf')) breakdown.push({ label: 'Advanced Custom Fields (Inclusief)', price: 0, isRecurring: true });
+    if (requirements.includes('wp_code')) breakdown.push({ label: 'WP Code (Inclusief)', price: 0, isRecurring: true });
+    if (requirements.includes('wp_forms')) breakdown.push({ label: 'WP Forms (Inclusief)', price: 0, isRecurring: true });
+  }
+
+  if (requirements.includes('wp_jet')) breakdown.push({ label: 'Jet Engine' + (replacePlugins ? ' (Inclusief in onderhoud)' : ''), price: replacePlugins ? 0 : prices.wp_jet, isRecurring: true });
+  if (requirements.includes('wp_smashballoon_pro')) breakdown.push({ label: 'SmashBalloon (Pro)' + (replacePlugins ? ' (Inclusief in onderhoud)' : ''), price: replacePlugins ? 0 : prices.wp_smashballoon_pro, isRecurring: true });
+  
+  if (requirements.includes('wp_api_to_posts')) {
+    breakdown.push({ label: 'API to Posts (Eenmalig)', price: prices.wp_api_to_posts_onetime || 650, isRecurring: false });
+    breakdown.push({ label: 'API to Posts (Licentie)' + (replacePlugins ? ' (Inclusief in onderhoud)' : ''), price: replacePlugins ? 0 : prices.wp_api_to_posts, isRecurring: true });
+  }
+
+  if (hasMaintenance) {
+    const tier = notes['onderhoud_tier'];
+    if (tier === 'Licht') breakdown.push({ label: `Onderhoud (Licht)`, price: prices.onderhoud_light, isRecurring: true });
+    if (tier === 'Gemiddeld') breakdown.push({ label: `Onderhoud (Gemiddeld)`, price: prices.onderhoud_medium, isRecurring: true });
+    if (tier === 'Sterk') breakdown.push({ label: `Onderhoud (Sterk)`, price: prices.onderhoud_strong, isRecurring: true });
+  }
+
+  return breakdown;
+};
+
+export const REQ_LABELS: Record<string, string> = {
+  bouw_website: 'Bouw website',
+  type_werken_bij: 'Werken-bij site',
+  type_landing: 'Landingspagina',
+  type_corporate: 'Corporate website',
+  cms_eigen: 'Eigen CMS',
+  cms_wp: 'Wordpress',
+  eigen_recruitee: 'Recruitee',
+  wp_elementor: 'Elementor',
+  wp_acf: 'Advanced Custom Fields',
+  wp_code: 'WP Code',
+  wp_forms: 'WP Forms',
+  wp_jet: 'Jet Engine',
+  wp_smashballoon_pro: 'SmashBalloon (Pro)',
+  wp_api_to_posts: 'API to Posts',
+  onderhoud: 'Onderhoud website',
+  wp_rocket: 'WP Rocket',
+  wp_umbrella: 'WP Umbrella',
+  wp_wordfence: 'Wordfence free',
+  wp_wordfence_premium: 'Wordfence Premium'
+};
+
+export const REQ_ORDER = [
+  'bouw_website',
+  'type_werken_bij',
+  'type_landing',
+  'type_corporate',
+  'cms_wp',
+  'wp_elementor',
+  'wp_acf',
+  'wp_code',
+  'wp_forms',
+  'wp_jet',
+  'wp_smashballoon_pro',
+  'wp_api_to_posts',
+  'cms_eigen',
+  'eigen_recruitee',
+  'onderhoud',
+  'wp_rocket',
+  'wp_umbrella',
+  'wp_wordfence',
+  'wp_wordfence_premium'
+];
+
+export const LEVEL2_GROUP = ['type_werken_bij', 'type_landing', 'type_corporate'];
+export const LEVEL3_GROUP = ['cms_eigen', 'cms_wp'];
+
+export const getIndentClass = (req: string) => {
+  if (['type_werken_bij', 'type_landing', 'type_corporate', 'wp_rocket', 'wp_umbrella', 'wp_wordfence', 'wp_wordfence_premium'].includes(req)) return 'ml-8 md:ml-12';
+  if (['cms_eigen', 'cms_wp'].includes(req)) return 'ml-16 md:ml-24';
+  if (['eigen_recruitee', 'wp_elementor', 'wp_forms', 'wp_acf', 'wp_code', 'wp_jet', 'wp_smashballoon_pro', 'wp_api_to_posts'].includes(req)) return 'ml-24 md:ml-32';
+  return '';
+};
+
+interface RequirementsEditorProps {
+  requirements: string[];
+  requirementNotes: Record<string, string>;
+  onChangeRequirements: (reqs: string[]) => void;
+  onChangeNotes: (notes: Record<string, string>) => void;
+  prices: Prices;
+  lockedPrices?: Prices;
+}
+
+const RequirementsEditor: React.FC<RequirementsEditorProps> = ({ requirements, requirementNotes, onChangeRequirements, onChangeNotes, prices, lockedPrices }) => {
+  const [activeNoteFields, setActiveNoteFields] = useState<Record<string, boolean>>({});
+
+  const hasReq = (req: string) => requirements.includes(req);
+  const hasAnyType = hasReq('type_werken_bij') || hasReq('type_landing') || hasReq('type_corporate');
+
+  const toggleRequirement = (req: string) => {
+    let newReqs = [...requirements];
+    
+    if (newReqs.includes(req)) {
+      // Unchecking
+      newReqs = newReqs.filter(r => r !== req);
+      
+      // Uncheck children logic
+      if (req === 'bouw_website') {
+        newReqs = newReqs.filter(r => ![
+          ...LEVEL2_GROUP, ...LEVEL3_GROUP, 'eigen_recruitee', 'wp_elementor', 'wp_forms', 'wp_acf', 'wp_code', 'wp_jet', 'wp_smashballoon_pro', 'wp_api_to_posts'
+        ].includes(r));
+      } else if (LEVEL2_GROUP.includes(req)) {
+        // Since it's radio, unchecking it means no type is selected
+        newReqs = newReqs.filter(r => ![
+          ...LEVEL3_GROUP, 'eigen_recruitee', 'wp_elementor', 'wp_forms', 'wp_acf', 'wp_code', 'wp_jet', 'wp_smashballoon_pro', 'wp_api_to_posts'
+        ].includes(r));
+      } else if (req === 'cms_eigen') {
+        newReqs = newReqs.filter(r => !['eigen_recruitee'].includes(r));
+      } else if (req === 'cms_wp') {
+        newReqs = newReqs.filter(r => !['wp_elementor', 'wp_forms', 'wp_acf', 'wp_code', 'wp_jet', 'wp_smashballoon_pro', 'wp_api_to_posts'].includes(r));
+      } else if (req === 'onderhoud') {
+        newReqs = newReqs.filter(r => !['wp_rocket', 'wp_umbrella', 'wp_wordfence', 'wp_wordfence_premium'].includes(r));
+      }
+    } else {
+      // Checking
+      if (LEVEL2_GROUP.includes(req)) {
+        // Remove others in LEVEL2_GROUP
+        newReqs = newReqs.filter(r => !LEVEL2_GROUP.includes(r));
+      } else if (LEVEL3_GROUP.includes(req)) {
+        // Remove others in LEVEL3_GROUP
+        newReqs = newReqs.filter(r => !LEVEL3_GROUP.includes(r));
+        // Remove children of the old CMS
+        if (req === 'cms_eigen') {
+          newReqs = newReqs.filter(r => !['wp_elementor', 'wp_forms', 'wp_acf', 'wp_code', 'wp_jet', 'wp_smashballoon_pro', 'wp_api_to_posts'].includes(r));
+        } else if (req === 'cms_wp') {
+          newReqs = newReqs.filter(r => !['eigen_recruitee'].includes(r));
+        }
+      }
+      newReqs.push(req);
+      
+      // Auto-check defaults for Wordpress
+      if (req === 'cms_wp') {
+        if (!newReqs.includes('wp_elementor')) newReqs.push('wp_elementor');
+        if (!newReqs.includes('wp_acf')) newReqs.push('wp_acf');
+        if (!newReqs.includes('wp_code')) newReqs.push('wp_code');
+      }
+    }
+    onChangeRequirements(newReqs);
+  };
+
+  const updateNote = (req: string, note: string) => {
+    onChangeNotes({ ...requirementNotes, [req]: note });
+  };
+
+  const toggleNoteField = (id: string) => {
+    setActiveNoteFields(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleOnderhoudTierChange = (tier: string) => {
+    onChangeNotes({ ...requirementNotes, onderhoud_tier: tier });
+    
+    let newReqs = [...requirements];
+    
+    // First remove all maintenance plugins to reset
+    newReqs = newReqs.filter(r => !['wp_rocket', 'wp_umbrella', 'wp_wordfence', 'wp_wordfence_premium'].includes(r));
+    
+    if (tier === 'Licht') {
+      newReqs.push('wp_rocket');
+    } else if (tier === 'Gemiddeld') {
+      newReqs.push('wp_rocket', 'wp_umbrella', 'wp_wordfence');
+    } else if (tier === 'Sterk') {
+      newReqs.push('wp_rocket', 'wp_umbrella', 'wp_wordfence_premium');
+    }
+    
+    onChangeRequirements(newReqs);
+  };
+
+  const renderReqCheckbox = (id: string, label?: string, isBold = false, isRadio = false) => {
+    const checked = hasReq(id);
+    const showNoteField = activeNoteFields[id] || (requirementNotes[id] && requirementNotes[id].trim() !== '');
+    const displayLabel = label || REQ_LABELS[id] || id;
+
+    return (
+      <div className="group flex flex-col space-y-2.5 animate-in fade-in duration-300">
+        <div className="flex items-center space-x-4">
+          <button 
+            type="button"
+            onClick={() => toggleRequirement(id)}
+            className={`flex-shrink-0 w-6 h-6 ${isRadio ? 'rounded-full' : 'rounded-lg'} border-2 flex items-center justify-center transition-all ${checked ? 'bg-primary border-primary text-white shadow-md shadow-primary/20' : 'bg-white dark:bg-dark border-slate-300 dark:border-slate-600 text-transparent hover:border-primary'}`}
+          >
+            {isRadio ? (
+              <div className={`w-2 h-2 rounded-full bg-white ${checked ? 'opacity-100' : 'opacity-0'}`} />
+            ) : (
+              <Check className="w-4 h-4" strokeWidth={3} />
+            )}
+          </button>
+          <span 
+            onClick={() => toggleRequirement(id)}
+            className={`text-sm cursor-pointer select-none transition-colors flex items-center space-x-2 ${isBold ? 'font-bold text-text-main dark:text-white' : 'font-medium text-text-muted dark:text-slate-300'} ${checked ? 'text-primary dark:text-primary' : 'group-hover:text-primary'}`}
+          >
+            <span>{displayLabel}</span>
+          </span>
+          {checked && (
+            <button 
+              type="button"
+              onClick={() => toggleNoteField(id)}
+              className={`p-1.5 rounded-lg transition-all ${showNoteField ? 'bg-primary/10 text-primary' : 'text-text-muted opacity-0 group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+              title="Notitie toevoegen"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        
+        {checked && showNoteField && (
+          <div className="ml-10 pr-4 animate-in slide-in-from-top-2 duration-200">
+            <div className="relative flex items-center">
+              <div className="absolute left-3.5 flex items-center justify-center">
+                <MessageSquare className="w-4 h-4 text-primary opacity-40" />
+              </div>
+              <input 
+                type="text"
+                value={requirementNotes[id] || ''}
+                onChange={(e) => updateNote(id, e.target.value)}
+                placeholder="Notitie toevoegen..."
+                autoFocus={!requirementNotes[id]}
+                className="w-full bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium outline-none transition-all dark:text-white shadow-sm"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {renderReqCheckbox("bouw_website", undefined, true)}
+    
+      {hasReq('bouw_website') && (
+        <div className="ml-3 pl-7 py-2 border-l-2 border-slate-200 dark:border-white/10 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              {renderReqCheckbox("type_werken_bij", undefined, false, true)}
+              {hasReq('type_werken_bij') && (
+                <div className="ml-10 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <select
+                    value={requirementNotes['type_werken_bij_size'] || ''}
+                    onChange={(e) => onChangeNotes({ ...requirementNotes, type_werken_bij_size: e.target.value })}
+                    className="w-full bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl px-4 py-2.5 text-xs font-bold outline-none transition-all dark:text-white shadow-sm cursor-pointer"
+                  >
+                    <option value="" disabled>Selecteer grootte...</option>
+                    <option value="Small">Small</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Large">Large</option>
+                  </select>
+                </div>
+              )}
+            </div>
+            <div>
+              {renderReqCheckbox("type_landing", undefined, false, true)}
+              {hasReq('type_landing') && (
+                <div className="ml-10 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <select
+                    value={requirementNotes['type_landing_size'] || ''}
+                    onChange={(e) => onChangeNotes({ ...requirementNotes, type_landing_size: e.target.value })}
+                    className="w-full bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl px-4 py-2.5 text-xs font-bold outline-none transition-all dark:text-white shadow-sm cursor-pointer"
+                  >
+                    <option value="" disabled>Selecteer type...</option>
+                    <option value="Standaard">Standaard</option>
+                    <option value="Premium">Premium</option>
+                  </select>
+                </div>
+              )}
+            </div>
+            <div>{renderReqCheckbox("type_corporate", undefined, false, true)}</div>
+          </div>
+          
+          {hasAnyType && (
+            <div className="pt-4 space-y-6">
+              <div className="space-y-4">
+                {renderReqCheckbox("cms_wp", undefined, true, true)}
+                {hasReq('cms_wp') && (
+                  <div className="ml-3 pl-7 py-2 border-l-2 border-slate-200 dark:border-white/10 space-y-4">
+                    {renderReqCheckbox("wp_elementor")}
+                    {renderReqCheckbox("wp_acf")}
+                    {renderReqCheckbox("wp_code")}
+                    {renderReqCheckbox("wp_forms")}
+                    {renderReqCheckbox("wp_jet")}
+                    {renderReqCheckbox("wp_smashballoon_pro")}
+                    <div>
+                      {renderReqCheckbox("wp_api_to_posts")}
+                      {hasReq('wp_api_to_posts') && (
+                        <div className="ml-10 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <select
+                            value={requirementNotes['wp_api_to_posts_type'] || ''}
+                            onChange={(e) => onChangeNotes({ ...requirementNotes, wp_api_to_posts_type: e.target.value })}
+                            className="w-full bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl px-4 py-2.5 text-xs font-bold outline-none transition-all dark:text-white shadow-sm cursor-pointer"
+                          >
+                            <option value="" disabled>Selecteer API type...</option>
+                            {(prices.apiToPostsOptions || []).map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {renderReqCheckbox("cms_eigen", undefined, true, true)}
+                {hasReq('cms_eigen') && (
+                  <div className="ml-3 pl-7 py-2 border-l-2 border-slate-200 dark:border-white/10 space-y-4">
+                    {renderReqCheckbox("eigen_recruitee")}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {renderReqCheckbox("onderhoud", undefined, true)}
+      {hasReq('onderhoud') && (
+        <div className="ml-3 pl-7 py-2 border-l-2 border-slate-200 dark:border-white/10 space-y-4">
+          <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-200">
+            <select
+              value={requirementNotes['onderhoud_tier'] || ''}
+              onChange={(e) => handleOnderhoudTierChange(e.target.value)}
+              className="w-full max-w-xs bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl px-4 py-2.5 text-xs font-bold outline-none transition-all dark:text-white shadow-sm cursor-pointer"
+            >
+              <option value="" disabled>Selecteer pakket...</option>
+              <option value="Licht">Licht</option>
+              <option value="Gemiddeld">Gemiddeld</option>
+              <option value="Sterk">Sterk</option>
+            </select>
+          </div>
+          {renderReqCheckbox("wp_rocket")}
+          {renderReqCheckbox("wp_umbrella")}
+          {renderReqCheckbox("wp_wordfence")}
+          {renderReqCheckbox("wp_wordfence_premium")}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default RequirementsEditor;

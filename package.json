@@ -1,0 +1,87 @@
+{
+  "name": "projectdroid",
+  "version": "1.4.7",
+  "description": "Professional project management dashboard - Desktop & Web",
+  "main": "electron/main.js",
+  "type": "module",
+  "author": "Projectdroid Team",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "server": "node server.js",
+    "start": "node server.js",
+    "electron:dev": "electron .",
+    "electron:build": "npm run build && node build-electron.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.38.0",
+    "body-parser": "^1.20.3",
+    "clsx": "^2.1.1",
+    "cors": "^2.8.6",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.2",
+    "lucide-react": "^0.475.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.8.1",
+    "postcss": "^8.5.2",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.1",
+    "wait-on": "^8.0.2"
+  },
+  "overrides": {
+    "glob": "^10.3.10",
+    "rimraf": "^5.0.5",
+    "inflight": "^1.0.6",
+    "minimatch": "^10.2.1"
+  },
+  "build": {
+    "appId": "com.projectdroid.app",
+    "productName": "Projectdroid",
+    "copyright": "Copyright © 2025 Projectdroid",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "server.js",
+      "package.json",
+      "logo.png",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "logo.png",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Projectdroid",
+      "createDesktopShortcut": "always",
+      "runAfterFinish": true
+    },
+    "extraResources": [
+      {
+        "from": "logo.png",
+        "to": "."
+      }
+    ]
+  }
+}
