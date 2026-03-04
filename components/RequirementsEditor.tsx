@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Check, Edit3, MessageSquare } from 'lucide-react';
-import { Prices } from '../types';
+import { Prices, Project } from '../types';
 
 export const calculatePrice = (requirements: string[], notes: Record<string, string>, prices: Prices) => {
   let oneTime = 0;
@@ -24,18 +24,29 @@ export const calculatePrice = (requirements: string[], notes: Record<string, str
   }
 
   if (!isLanding) {
-    if (requirements.includes('wp_elementor')) recurring += prices.wp_elementor;
-    if (requirements.includes('wp_forms')) recurring += prices.wp_forms;
-    if (requirements.includes('wp_acf')) recurring += prices.wp_acf;
-    if (requirements.includes('wp_code')) recurring += prices.wp_code;
+    if (requirements.includes('wp_elementor')) oneTime += prices.wp_elementor;
+    if (requirements.includes('wp_forms')) {
+      if (hasMaintenance) oneTime += prices.wp_forms;
+      else recurring += prices.wp_forms;
+    }
+    if (requirements.includes('wp_acf')) oneTime += prices.wp_acf;
+    if (requirements.includes('wp_code')) oneTime += prices.wp_code;
   }
 
   let pluginRecurring = 0;
-  if (requirements.includes('wp_jet')) pluginRecurring += prices.wp_jet;
-  if (requirements.includes('wp_smashballoon_pro')) pluginRecurring += prices.wp_smashballoon_pro;
+  let pluginOneTime = 0;
+  if (requirements.includes('wp_jet')) {
+    if (hasMaintenance) pluginOneTime += prices.wp_jet;
+    else pluginRecurring += prices.wp_jet;
+  }
+  if (requirements.includes('wp_smashballoon_pro')) {
+    if (hasMaintenance) pluginOneTime += prices.wp_smashballoon_pro;
+    else pluginRecurring += prices.wp_smashballoon_pro;
+  }
   if (requirements.includes('wp_api_to_posts')) {
     oneTime += prices.wp_api_to_posts_onetime || 650;
-    pluginRecurring += prices.wp_api_to_posts;
+    if (hasMaintenance) pluginOneTime += prices.wp_api_to_posts;
+    else pluginRecurring += prices.wp_api_to_posts;
   }
 
   let maintenanceRecurring = 0;
@@ -49,6 +60,7 @@ export const calculatePrice = (requirements: string[], notes: Record<string, str
   if (replacePlugins) {
     recurring += maintenanceRecurring;
   } else {
+    oneTime += pluginOneTime;
     recurring += pluginRecurring + maintenanceRecurring;
   }
 
@@ -59,7 +71,6 @@ export const getBudgetBreakdown = (requirements: string[], notes: Record<string,
   const breakdown: { label: string; price: number; isRecurring: boolean }[] = [];
   const isLanding = requirements.includes('type_landing');
   const hasMaintenance = requirements.includes('onderhoud');
-  const replacePlugins = isLanding && hasMaintenance;
 
   if (requirements.includes('type_werken_bij')) {
     const size = notes['type_werken_bij_size'];
@@ -74,24 +85,8 @@ export const getBudgetBreakdown = (requirements: string[], notes: Record<string,
     if (size === 'Premium') breakdown.push({ label: `Landingspagina (Premium)`, price: prices.type_landing_premium, isRecurring: false });
   }
 
-  if (!isLanding) {
-    if (requirements.includes('wp_elementor')) breakdown.push({ label: 'Elementor', price: prices.wp_elementor, isRecurring: true });
-    if (requirements.includes('wp_acf')) breakdown.push({ label: 'Advanced Custom Fields', price: prices.wp_acf, isRecurring: true });
-    if (requirements.includes('wp_code')) breakdown.push({ label: 'WP Code', price: prices.wp_code, isRecurring: true });
-    if (requirements.includes('wp_forms')) breakdown.push({ label: 'WP Forms', price: prices.wp_forms, isRecurring: true });
-  } else {
-    if (requirements.includes('wp_elementor')) breakdown.push({ label: 'Elementor (Inclusief)', price: 0, isRecurring: true });
-    if (requirements.includes('wp_acf')) breakdown.push({ label: 'Advanced Custom Fields (Inclusief)', price: 0, isRecurring: true });
-    if (requirements.includes('wp_code')) breakdown.push({ label: 'WP Code (Inclusief)', price: 0, isRecurring: true });
-    if (requirements.includes('wp_forms')) breakdown.push({ label: 'WP Forms (Inclusief)', price: 0, isRecurring: true });
-  }
-
-  if (requirements.includes('wp_jet')) breakdown.push({ label: 'Jet Engine' + (replacePlugins ? ' (Inclusief in onderhoud)' : ''), price: replacePlugins ? 0 : prices.wp_jet, isRecurring: true });
-  if (requirements.includes('wp_smashballoon_pro')) breakdown.push({ label: 'SmashBalloon (Pro)' + (replacePlugins ? ' (Inclusief in onderhoud)' : ''), price: replacePlugins ? 0 : prices.wp_smashballoon_pro, isRecurring: true });
-  
   if (requirements.includes('wp_api_to_posts')) {
     breakdown.push({ label: 'API to Posts (Eenmalig)', price: prices.wp_api_to_posts_onetime || 650, isRecurring: false });
-    breakdown.push({ label: 'API to Posts (Licentie)' + (replacePlugins ? ' (Inclusief in onderhoud)' : ''), price: replacePlugins ? 0 : prices.wp_api_to_posts, isRecurring: true });
   }
 
   if (hasMaintenance) {
@@ -102,6 +97,51 @@ export const getBudgetBreakdown = (requirements: string[], notes: Record<string,
   }
 
   return breakdown;
+};
+
+export const getExpectedExpenses = (requirements: string[], prices: Prices, allProjects: Project[] = []) => {
+  const expenses: { id: string; description: string; amount: number; isRecurring: boolean }[] = [];
+  
+  const getCostInfo = (key: keyof Prices, label: string): { amount: number, isRecurring: boolean } | null => {
+    if (!requirements.includes(label)) return null;
+    let cost = prices[`${key}_cost` as keyof Prices] as number || 0;
+    let isRecurring = true;
+    
+    const dynamicData = prices.dynamicPricing?.[key as string];
+    if (dynamicData && dynamicData.isDynamic) {
+      isRecurring = dynamicData.isAnnual ?? true;
+      const usageCount = allProjects.filter(p => (p.requirements || []).includes(label)).length || 1;
+      cost = cost / usageCount;
+    } else if ((prices.dynamicCosts || []).includes(key as string)) {
+      // Fallback for older data that still uses dynamicCosts array
+      const usageCount = allProjects.filter(p => (p.requirements || []).includes(label)).length || 1;
+      cost = cost / usageCount;
+    }
+    return { amount: cost, isRecurring };
+  };
+
+  const wp_elementor = getCostInfo('wp_elementor', 'wp_elementor');
+  if (wp_elementor) expenses.push({ id: 'gen_wp_elementor', description: 'Licentie Elementor', amount: wp_elementor.amount, isRecurring: wp_elementor.isRecurring });
+
+  const wp_acf = getCostInfo('wp_acf', 'wp_acf');
+  if (wp_acf) expenses.push({ id: 'gen_wp_acf', description: 'Licentie Advanced Custom Fields', amount: wp_acf.amount, isRecurring: wp_acf.isRecurring });
+
+  const wp_code = getCostInfo('wp_code', 'wp_code');
+  if (wp_code) expenses.push({ id: 'gen_wp_code', description: 'Licentie WP Code', amount: wp_code.amount, isRecurring: wp_code.isRecurring });
+
+  const wp_forms = getCostInfo('wp_forms', 'wp_forms');
+  if (wp_forms) expenses.push({ id: 'gen_wp_forms', description: 'Licentie WP Forms', amount: wp_forms.amount, isRecurring: wp_forms.isRecurring });
+
+  const wp_jet = getCostInfo('wp_jet', 'wp_jet');
+  if (wp_jet) expenses.push({ id: 'gen_wp_jet', description: 'Licentie Jet Engine', amount: wp_jet.amount, isRecurring: wp_jet.isRecurring });
+
+  const wp_smashballoon_pro = getCostInfo('wp_smashballoon_pro', 'wp_smashballoon_pro');
+  if (wp_smashballoon_pro) expenses.push({ id: 'gen_wp_smashballoon_pro', description: 'Licentie SmashBalloon (Pro)', amount: wp_smashballoon_pro.amount, isRecurring: wp_smashballoon_pro.isRecurring });
+
+  const wp_api_to_posts = getCostInfo('wp_api_to_posts', 'wp_api_to_posts');
+  if (wp_api_to_posts) expenses.push({ id: 'gen_wp_api_to_posts', description: 'Licentie API to Posts', amount: wp_api_to_posts.amount, isRecurring: wp_api_to_posts.isRecurring });
+
+  return expenses;
 };
 
 export const REQ_LABELS: Record<string, string> = {

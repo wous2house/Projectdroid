@@ -1,6 +1,5 @@
 
 import { User, ProjectStatus, TaskStatus, Prices } from './types';
-
 export const DEFAULT_PRICES: Prices = {
   type_werken_bij_small: 3000,
   type_werken_bij_medium: 6000,
@@ -8,12 +7,19 @@ export const DEFAULT_PRICES: Prices = {
   type_landing_standaard: 800,
   type_landing_premium: 1025,
   wp_elementor: 62.50,
+  wp_elementor_cost: 62.50,
   wp_forms: 62.50,
+  wp_forms_cost: 62.50,
   wp_acf: 32,
+  wp_acf_cost: 32,
   wp_code: 63,
+  wp_code_cost: 63,
   wp_jet: 70,
+  wp_jet_cost: 70,
   wp_smashballoon_pro: 32,
+  wp_smashballoon_pro_cost: 32,
   wp_api_to_posts: 110,
+  wp_api_to_posts_cost: 110,
   wp_api_to_posts_onetime: 650,
   onderhoud_light: 500,
   onderhoud_medium: 750,
@@ -23,7 +29,9 @@ export const DEFAULT_PRICES: Prices = {
     'People XS', 'Visma EasyCruit', 'SAP SuccesFactors', 'Oracle',
     'Digivition', 'Nocore', 'SmartRecruiters', 'Salesforce', 'Emply',
     'AFAS software', 'Recruitnow', 'HR Office'
-  ]
+  ],
+  dynamicCosts: [],
+  dynamicPricing: {}
 };
 
 export const MOCK_USERS: User[] = [

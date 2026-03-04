@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, X, Plus, UserPlus, Database, Download, Upload, Shield, Trash2, CheckCircle2, Circle, Edit3, Mail, Briefcase, Link as LinkIcon, Camera, Save, Euro } from 'lucide-react';
 import { User as UserType, Project, Prices, AppState } from '../types';
+import { DEFAULT_PRICES } from '../constants';
 
 interface AdminSettingsProps {
   users: UserType[];
@@ -563,29 +564,146 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({
             <div className="space-y-8 animate-in slide-in-from-left-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-black text-text-main dark:text-white">Prijzen Beheer</h3>
-              </div>
-              
-              <div className="bg-light dark:bg-dark/40 p-8 rounded-[32px] border-2 border-primary/20 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {Object.entries(prices).filter(([key]) => key !== 'apiToPostsOptions').map(([key, value]) => (
-                    <div key={key} className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-60 ml-2">
-                        {key.replace(/_/g, ' ')}
-                      </label>
-                      <div className="relative">
-                        <Euro className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                        <input
-                          type="number"
-                          value={value as number}
-                          onChange={(e) => onUpdatePrices({ ...prices, [key]: parseFloat(e.target.value) || 0 })}
-                          className="w-full bg-white dark:bg-dark rounded-xl pl-12 pr-6 py-3.5 font-bold text-sm outline-none border border-transparent focus:border-primary dark:text-white"
-                        />
-                      </div>
-                    </div>
-                  ))}
                 </div>
-              </div>
 
+                <div className="bg-light dark:bg-dark/40 p-8 rounded-[32px] border-2 border-primary/20 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {Object.entries(prices).filter(([key]) => key !== 'apiToPostsOptions' && key !== 'dynamicCosts' && key !== 'dynamicPricing' && !key.endsWith('_cost')).map(([key, value]) => {
+                    const hasCost = DEFAULT_PRICES.hasOwnProperty(`${key}_cost`);
+                    const dynamicData = prices.dynamicPricing?.[key] || { isDynamic: false, isUnlimited: false, limit: 1 };
+                    const isDynamic = dynamicData.isDynamic;
+
+                    return (
+                      <div key={key} className="space-y-4 bg-white dark:bg-dark p-6 rounded-3xl border border-slate-100 dark:border-white/5">
+                        <label className="text-[12px] font-black uppercase tracking-widest text-text-main dark:text-white">
+                          {key.replace(/_/g, ' ')}
+                        </label>
+                        <div className="grid grid-cols-1 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-60 ml-2">
+                              Verkoop Prijs (€)
+                            </label>
+                            <div className="relative">
+                              <Euro className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                              <input
+                                type="number"
+                                value={value !== undefined ? value : (DEFAULT_PRICES[key as keyof Prices] as number)}
+                                onChange={(e) => onUpdatePrices({ ...prices, [key]: parseFloat(e.target.value) || 0 })}
+                                className="w-full bg-light dark:bg-dark-card rounded-xl pl-12 pr-6 py-3.5 font-bold text-sm outline-none border border-transparent focus:border-primary dark:text-white transition-all"
+                              />
+                            </div>
+                          </div>
+                          {hasCost && (
+                            <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-white/5">
+                              <div className="flex flex-col space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-danger opacity-80 ml-2">
+                                  Inkoop Prijs (€)
+                                </label>
+                                <div className="relative">
+                                  <Euro className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-danger opacity-80" />
+                                  <input
+                                    type="number"
+                                    value={prices[`${key}_cost` as keyof Prices] !== undefined ? prices[`${key}_cost` as keyof Prices] as number : (DEFAULT_PRICES[`${key}_cost` as keyof Prices] as number)}
+                                    onChange={(e) => onUpdatePrices({ ...prices, [`${key}_cost`]: parseFloat(e.target.value) || 0 })}
+                                    className="w-full bg-light dark:bg-dark-card rounded-xl pl-12 pr-6 py-3.5 font-bold text-sm outline-none border border-transparent focus:border-danger dark:text-white transition-all"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="bg-light dark:bg-dark/40 rounded-xl p-4 border border-slate-200 dark:border-white/5 space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">Dynamisch delen</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onUpdatePrices({
+                                        ...prices,
+                                        dynamicPricing: {
+                                          ...(prices.dynamicPricing || {}),
+                                          [key]: { ...dynamicData, isDynamic: !isDynamic }
+                                        }
+                                      });
+                                    }}
+                                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isDynamic ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                  >
+                                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isDynamic ? 'translate-x-5' : 'translate-x-1'}`} />
+                                  </button>
+                                </div>
+                                
+                                {isDynamic && (
+                                  <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <label className="flex items-center space-x-3 cursor-pointer group">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={dynamicData.isAnnual ?? true}
+                                        onChange={(e) => {
+                                          onUpdatePrices({
+                                            ...prices,
+                                            dynamicPricing: {
+                                              ...(prices.dynamicPricing || {}),
+                                              [key]: { ...dynamicData, isAnnual: e.target.checked }
+                                            }
+                                          });
+                                        }}
+                                        className="w-4 h-4 rounded-md border-slate-300 text-primary focus:ring-primary"
+                                      />
+                                      <span className="text-xs font-bold text-text-main dark:text-white group-hover:text-primary transition-colors">
+                                        Jaarlijks bedrag
+                                      </span>
+                                    </label>
+                                    <label className="flex items-center space-x-3 cursor-pointer group">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={dynamicData.isUnlimited}
+                                        onChange={(e) => {
+                                          onUpdatePrices({
+                                            ...prices,
+                                            dynamicPricing: {
+                                              ...(prices.dynamicPricing || {}),
+                                              [key]: { ...dynamicData, isUnlimited: e.target.checked }
+                                            }
+                                          });
+                                        }}
+                                        className="w-4 h-4 rounded-md border-slate-300 text-primary focus:ring-primary"
+                                      />
+                                      <span className="text-xs font-bold text-text-main dark:text-white group-hover:text-primary transition-colors">
+                                        Ongelimiteerde websites
+                                      </span>
+                                    </label>
+
+                                    {!dynamicData.isUnlimited && (
+                                      <div className="space-y-2">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-text-muted">
+                                          Aantal websites in licentie
+                                        </label>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          value={dynamicData.limit || 1}
+                                          onChange={(e) => {
+                                            onUpdatePrices({
+                                              ...prices,
+                                              dynamicPricing: {
+                                                ...(prices.dynamicPricing || {}),
+                                                [key]: { ...dynamicData, limit: parseInt(e.target.value) || 1 }
+                                              }
+                                            });
+                                          }}
+                                          className="w-full bg-white dark:bg-dark-card rounded-lg px-4 py-2.5 font-bold text-xs outline-none border border-slate-200 dark:border-white/10 focus:border-primary dark:text-white transition-all"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                </div>
               <div className="bg-light dark:bg-dark/40 p-8 rounded-[32px] border-2 border-primary/20 space-y-8 mt-8">
                 <h4 className="text-lg font-black text-text-main dark:text-white">API to Posts Opties</h4>
                 <div className="flex space-x-4">

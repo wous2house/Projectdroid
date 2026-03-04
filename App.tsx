@@ -53,7 +53,10 @@ const App: React.FC = () => {
     if (storedProjects) setProjects(JSON.parse(storedProjects));
     if (storedCustomers) setCustomers(JSON.parse(storedCustomers));
     if (storedActivities) setActivities(JSON.parse(storedActivities));
-    if (storedPrices) setPrices(JSON.parse(storedPrices));
+    if (storedPrices) {
+      const parsed = JSON.parse(storedPrices);
+      setPrices({ ...DEFAULT_PRICES, ...parsed });
+    }
     
     let loadedUsers = MOCK_USERS;
     if (storedUsers) {
@@ -293,8 +296,9 @@ const App: React.FC = () => {
 
       <main className="max-w-[2400px] mx-auto px-4 md:px-8 py-8 md:py-12 pb-32 md:pb-12">
         {selectedProjectId && selectedProject ? (
-          <ProjectDetails 
+          <ProjectDetails
             project={selectedProject}
+            allProjects={projects}
             customers={customers}
             users={users}
             prices={prices}
@@ -305,8 +309,7 @@ const App: React.FC = () => {
             logActivity={logActivity}
             deepLink={deepLink}
             onClearDeepLink={() => setDeepLink(null)}
-          />
-        ) : activeView === 'dashboard' ? (
+          />        ) : activeView === 'dashboard' ? (
           <Dashboard 
             projects={projects}
             customers={customers}

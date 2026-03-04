@@ -97,17 +97,26 @@ export interface Prices {
   type_landing_standaard: number;
   type_landing_premium: number;
   wp_elementor: number;
+  wp_elementor_cost: number;
   wp_forms: number;
+  wp_forms_cost: number;
   wp_acf: number;
+  wp_acf_cost: number;
   wp_code: number;
+  wp_code_cost: number;
   wp_jet: number;
+  wp_jet_cost: number;
   wp_smashballoon_pro: number;
+  wp_smashballoon_pro_cost: number;
   wp_api_to_posts: number;
+  wp_api_to_posts_cost: number;
   wp_api_to_posts_onetime: number;
   onderhoud_light: number;
   onderhoud_medium: number;
   onderhoud_strong: number;
   apiToPostsOptions?: string[];
+  dynamicCosts?: string[];
+  dynamicPricing?: Record<string, { isDynamic: boolean; isUnlimited: boolean; limit?: number; isAnnual?: boolean }>;
 }
 
 export interface Project {
@@ -131,6 +140,12 @@ export interface Project {
   requirements?: string[];
   requirementNotes?: Record<string, string>;
   lockedPrices?: Prices;
+  customRecurring?: { id: string; description: string; amount: number }[];
+  ignoredRecurring?: string[];
+  overriddenRecurring?: Record<string, number>;
+  customOneTime?: { id: string; description: string; amount: number }[];
+  ignoredOneTime?: string[];
+  overriddenOneTime?: Record<string, number>;
 }
 
 export interface ActivityDeepLink {

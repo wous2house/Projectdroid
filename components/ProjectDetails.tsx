@@ -13,6 +13,7 @@ import { nl } from 'date-fns/locale';
 
 interface ProjectDetailsProps {
   project: Project;
+  allProjects: Project[];
   customers: Customer[];
   users: User[];
   prices: Prices;
@@ -27,7 +28,7 @@ interface ProjectDetailsProps {
 
 type Tab = 'samenvatting' | 'bord' | 'tijdlijn' | 'notities' | 'financieel';
 
-const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, customers, users, prices, onUpdate, onBack, addToast, triggerConfirm, logActivity, deepLink, onClearDeepLink }) => {
+const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, customers, users, prices, onUpdate, onBack, addToast, triggerConfirm, logActivity, deepLink, onClearDeepLink }) => {
   const [activeTab, setActiveTab] = useState<Tab>('samenvatting');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
@@ -395,7 +396,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, customers, use
           />
         )}
         {activeTab === 'financieel' && (
-          <FinancialView project={project} prices={prices} onUpdate={onUpdate} addToast={addToast} triggerConfirm={triggerConfirm} logActivity={logActivity} />
+          <FinancialView project={project} allProjects={allProjects} prices={prices} onUpdate={onUpdate} addToast={addToast} triggerConfirm={triggerConfirm} logActivity={logActivity} />
         )}
         {activeTab === 'notities' && (
           <div className="space-y-10 animate-in fade-in duration-500">
