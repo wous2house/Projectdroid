@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Project, Invoice, Expense, Activity, Prices } from '../types';
-import { Plus, Trash2, CheckCircle2, Circle, Euro, TrendingUp, TrendingDown, Calendar, Receipt, CreditCard, AlertCircle, Check, PartyPopper, Info, X, Edit3 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, Circle, Euro, TrendingUp, TrendingDown, Calendar, Receipt, CreditCard, AlertCircle, Check, PartyPopper, Info, X, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { getBudgetBreakdown, getExpectedExpenses } from './RequirementsEditor';
@@ -16,11 +16,18 @@ interface FinancialViewProps {
 }
 
 const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, prices, onUpdate, addToast, triggerConfirm, logActivity }) => {
+  const currentYear = new Date().getFullYear();
+  const startYear = project.createdAt ? new Date(project.createdAt).getFullYear() : currentYear;
+  const availableYears = Array.from({ length: currentYear - startYear + 1 }, (_, i) => startYear + i);
+  const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
+
   const [isAddingInvoice, setIsAddingInvoice] = useState(false);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isAddingRecurring, setIsAddingRecurring] = useState(false);
   const [isAddingOneTime, setIsAddingOneTime] = useState(false);
   const [showBudgetBreakdown, setShowBudgetBreakdown] = useState(false);
+  const [showExpectedExpenses, setShowExpectedExpenses] = useState(false);
+  const [itemActionMenu, setItemActionMenu] = useState<{ type: 'invoice' | 'expense' | 'recurring' | 'expected_expense'; id: string; data: any } | null>(null);
 
   const [isEditingPrice, setIsEditingPrice] = useState(false);
   const [editPriceValue, setEditPriceValue] = useState(project.totalPrice?.toString() || '');
@@ -61,7 +68,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
   }, [project.requirements, project.requirementNotes, project.lockedPrices, prices]);
 
   const expectedExpenses = useMemo(() => {
-    return getExpectedExpenses(project.requirements || [], project.lockedPrices || prices, allProjects);
+    return getExpectedExpenses(project.requirements || [], project.lockedPrices || prices, allProjects, prices);
   }, [project.requirements, project.lockedPrices, prices, allProjects]);
 
   const activeBreakdownOneTime = breakdown.filter(b => !b.isRecurring && b.price > 0 && !(project.ignoredOneTime || []).includes(b.label));
@@ -89,27 +96,64 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
   const invoices = project.invoices || [];
   const expenses = project.expenses || [];
 
+  const expandedExpectedExpenses = useMemo(() => {
+    const items: any[] = [];
+    expectedExpenses.forEach(exp => {
+      if (exp.isRecurring) {
+        availableYears.forEach(year => {
+          items.push({
+            ...exp,
+            id: `${exp.id}_${year}`,
+            originalId: exp.id,
+            description: `${exp.description} (${year})`,
+            year
+          });
+        });
+      } else {
+        items.push({
+          ...exp,
+          id: `${exp.id}_${startYear}`,
+          originalId: exp.id,
+          description: exp.description,
+          year: startYear
+        });
+      }
+    });
+    return selectedYear === 'all' ? items : items.filter(i => i.year === selectedYear);
+  }, [expectedExpenses, availableYears, selectedYear, startYear]);
+
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => selectedYear === 'all' || new Date(inv.date).getFullYear() === selectedYear);
+  }, [invoices, selectedYear]);
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(exp => selectedYear === 'all' || new Date(exp.date).getFullYear() === selectedYear);
+  }, [expenses, selectedYear]);
+
   const financialSummary = useMemo(() => {
-    const invoiced = invoices.reduce((acc, inv) => {
+    const isStartYear = selectedYear === 'all' || selectedYear === startYear;
+    const currentTotalPrice = isStartYear ? totalPrice : 0;
+
+    const invoiced = filteredInvoices.reduce((acc, inv) => {
       const amount = inv.type === 'amount' ? inv.amount : (inv.percentage / 100) * totalPrice;
       return acc + amount;
     }, 0);
 
-    const received = invoices.reduce((acc, inv) => {
+    const received = filteredInvoices.reduce((acc, inv) => {
       if (!inv.isReceived) return acc;
       const amount = inv.type === 'amount' ? inv.amount : (inv.percentage / 100) * totalPrice;
       return acc + amount;
     }, 0);
 
-    const activeExpectedExpenses = expectedExpenses.filter(e => !(project.ignoredOneTime || []).includes(e.id)); // Using ignoredOneTime as generic ignore list for now, or maybe ignoredRecurring since they are recurring expenses? Let's not ignore them for now.
-    const expectedExpensesAmount = expectedExpenses.reduce((acc, exp) => acc + exp.amount, 0);
-    const totalExpenses = expenses.reduce((acc, exp) => acc + exp.amount, 0) + expectedExpensesAmount;
+    const activeExpectedExpenses = expandedExpectedExpenses.filter(e => !(project.ignoredOneTime || []).includes(e.originalId || e.id));
+    const expectedExpensesAmount = activeExpectedExpenses.reduce((acc, exp) => acc + exp.amount, 0);
+    const totalExpenses = filteredExpenses.reduce((acc, exp) => acc + exp.amount, 0) + expectedExpensesAmount;
 
-    const receivedPercentage = totalPrice > 0 ? (received / totalPrice) * 100 : 0;
-    const isFullyPaid = receivedPercentage >= 99.9; // Account for floating point
+    const receivedPercentage = currentTotalPrice > 0 ? (received / currentTotalPrice) * 100 : (received > 0 ? 100 : 0);
+    const isFullyPaid = receivedPercentage >= 99.9;
 
-    return { invoiced, received, totalExpenses, isFullyPaid, receivedPercentage };
-  }, [invoices, expenses, expectedExpenses, totalPrice]);
+    return { invoiced, received, totalExpenses, isFullyPaid, receivedPercentage, currentTotalPrice };
+  }, [filteredInvoices, filteredExpenses, expandedExpectedExpenses, totalPrice, selectedYear, startYear, project.ignoredOneTime]);
 
   const handleAddInvoice = () => {
     if (!newInvoice.description || !newInvoice.value) return;
@@ -328,8 +372,8 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
   };
 
   const activeBreakdownRecurring = breakdown.filter(b => b.isRecurring && b.price > 0 && !(project.ignoredRecurring || []).includes(b.label));
-  
-  const recurringItems = [
+
+  const baseRecurringItems = [
     ...activeBreakdownRecurring.map(b => ({
       id: b.label,
       description: b.label,
@@ -344,8 +388,46 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
     }))
   ];
 
+  const recurringItems = useMemo(() => {
+    const items: any[] = [];
+    baseRecurringItems.forEach(item => {
+      availableYears.forEach(year => {
+        const descriptionWithYear = `${item.description} (${year})`;
+        const isInvoiced = project.invoices?.some(inv => inv.description === descriptionWithYear);
+        items.push({
+          ...item,
+          id: `${item.id}_${year}`,
+          originalId: item.id,
+          description: descriptionWithYear,
+          year,
+          isInvoiced
+        });
+      });
+    });
+    return selectedYear === 'all' ? items : items.filter(i => i.year === selectedYear);
+  }, [baseRecurringItems, availableYears, selectedYear, project.invoices]);
   return (
     <div className="space-y-8 animate-in fade-in duration-500 font-sans pb-12">
+      <div className="flex justify-end mb-4">
+        <div className="bg-white dark:bg-dark-card border border-primary/10 rounded-xl overflow-hidden flex items-center p-1 shadow-sm">
+          <button
+            onClick={() => setSelectedYear('all')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedYear === 'all' ? 'bg-primary text-white shadow' : 'text-text-muted hover:bg-light dark:hover:bg-dark'}`}
+          >
+            Alles
+          </button>
+          {availableYears.map(year => (
+            <button
+              key={year}
+              onClick={() => setSelectedYear(year)}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedYear === year ? 'bg-primary text-white shadow' : 'text-text-muted hover:bg-light dark:hover:bg-dark'}`}
+            >
+              {year}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Financial Health Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <div className="bg-white dark:bg-dark-card p-6 md:p-8 rounded-3xl border border-primary/5 shadow-sm relative group">
@@ -468,14 +550,18 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
           )}
 
           <div className="space-y-4">
-            {invoices.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(inv => {
+            {filteredInvoices.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(inv => {
               const amount = inv.type === 'amount' ? inv.amount : (inv.percentage / 100) * totalPrice;
               return (
-                <div key={inv.id} className={`bg-white dark:bg-dark-card border border-primary/5 p-5 rounded-2xl flex items-center justify-between group ${editingInvoiceId === inv.id ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div 
+                  key={inv.id} 
+                  onClick={() => setItemActionMenu({ type: 'invoice', id: inv.id, data: inv })}
+                  className={`bg-white dark:bg-dark-card border border-primary/5 p-5 rounded-2xl flex items-center justify-between group cursor-pointer hover:border-primary/20 transition-all ${editingInvoiceId === inv.id ? 'opacity-50 pointer-events-none' : ''}`}
+                >
                   <div className="flex items-center space-x-4">
-                    <button onClick={() => toggleInvoiceReceived(inv.id)} className={`p-2 rounded-xl transition-all ${inv.isReceived ? 'bg-success text-white' : 'bg-light dark:bg-dark text-text-muted opacity-40 hover:opacity-100'}`}>
+                    <div className={`p-2 rounded-xl transition-all ${inv.isReceived ? 'bg-success text-white' : 'bg-light dark:bg-dark text-text-muted opacity-40'}`}>
                       {inv.isReceived ? <Check className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
-                    </button>
+                    </div>
                     <div>
                       <h4 className="font-bold text-sm dark:text-white leading-none mb-1">{inv.description}</h4>
                       <p className="text-[9px] font-bold text-text-muted dark:text-light/40 uppercase tracking-widest">
@@ -483,19 +569,13 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <span className={`text-sm font-black mr-3 ${inv.isReceived ? 'text-success' : 'text-text-main dark:text-white opacity-60'}`}>€{amount.toLocaleString()}</span>
-                    <button onClick={() => startEditInvoice(inv)} className="p-2 text-primary opacity-0 group-hover:opacity-100 transition-all hover:bg-primary/10 rounded-lg">
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => deleteInvoice(inv.id)} className="p-2 text-danger opacity-0 group-hover:opacity-100 transition-all hover:bg-danger/10 rounded-lg">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <div className="flex items-center">
+                    <span className={`text-sm font-black ${inv.isReceived ? 'text-success' : 'text-text-main dark:text-white opacity-60'}`}>€{amount.toLocaleString()}</span>
                   </div>
                 </div>
               );
             })}
-            {invoices.length === 0 && !isAddingInvoice && (
+            {filteredInvoices.length === 0 && !isAddingInvoice && (
               <div className="py-12 text-center bg-light/30 dark:bg-dark/20 border-2 border-dashed border-primary/10 rounded-3xl">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-40">Nog geen factuurmomenten</p>
               </div>
@@ -545,34 +625,71 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
           )}
 
           <div className="space-y-4">
-            {expectedExpenses.filter(e => !(project.ignoredOneTime || []).includes(e.id)).map(exp => (
-              <div key={exp.id} className="bg-white dark:bg-dark-card border border-primary/5 p-5 rounded-2xl flex items-center justify-between group">
-                <div className="flex items-center space-x-4">
-                  <div className={`p-3 rounded-xl bg-danger/10 text-danger`}>
-                    <CreditCard className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm dark:text-white leading-none mb-1">{exp.description} <span className="text-[9px] text-danger bg-danger/10 px-1.5 py-0.5 rounded ml-2">Automatisch</span></h4>
-                    <p className="text-[9px] font-bold text-text-muted dark:text-light/40 uppercase tracking-widest">
-                      Jaarlijks
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm font-black text-danger mr-3">€{exp.amount.toLocaleString()}</span>
-                  <button onClick={() => {
-                    triggerConfirm('Verbergen?', 'Weet je zeker dat je deze automatische uitgave wilt verbergen?', () => {
-                      onUpdate({ ...project, ignoredOneTime: [...(project.ignoredOneTime || []), exp.id] });
-                      addToast('Automatische uitgave verborgen', 'info');
-                    });
-                  }} className="p-2 text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-all hover:bg-danger/10 rounded-lg">
-                    <X className="w-4 h-4" />
+            {expandedExpectedExpenses.filter(e => !(project.ignoredOneTime || []).includes(e.originalId || e.id)).length > 0 && (() => {
+              const activeExpected = expandedExpectedExpenses.filter(e => !(project.ignoredOneTime || []).includes(e.originalId || e.id));
+              const totalAmount = activeExpected.reduce((acc, exp) => acc + exp.amount, 0);
+              return (
+                <div className="bg-white dark:bg-dark-card border border-primary/10 rounded-2xl overflow-hidden shadow-sm">
+                  <button
+                    onClick={() => setShowExpectedExpenses(!showExpectedExpenses)}
+                    className="w-full flex items-center justify-between p-5 hover:bg-light/50 dark:hover:bg-dark/50 transition-colors"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="p-3 rounded-xl bg-danger/10 text-danger">
+                        <CreditCard className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <h4 className="font-bold text-sm dark:text-white leading-none mb-1">
+                          Automatische Uitgaven <span className="text-[10px] bg-danger/10 text-danger px-2 py-0.5 rounded-full ml-2">{activeExpected.length}</span>
+                        </h4>
+                        <p className="text-[9px] font-bold text-text-muted dark:text-light/40 uppercase tracking-widest">
+                          Periodieke plugin / server kosten
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm font-black text-danger">
+                        €{totalAmount.toLocaleString()}
+                      </span>
+                      {showExpectedExpenses ? <ChevronUp className="w-5 h-5 text-text-muted" /> : <ChevronDown className="w-5 h-5 text-text-muted" />}
+                    </div>
                   </button>
+                  
+                  {showExpectedExpenses && (
+                    <div className="border-t border-primary/10 bg-light/30 dark:bg-dark/20 p-4 space-y-3">
+                      {activeExpected.map(exp => (
+                        <div 
+                          key={exp.id} 
+                          onClick={() => setItemActionMenu({ type: 'expected_expense', id: exp.id, data: exp })}
+                          className="bg-white dark:bg-dark-card border border-primary/5 p-4 rounded-xl flex items-center justify-between group cursor-pointer hover:border-primary/20 transition-all"
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className={`p-2.5 rounded-lg bg-danger/5 text-danger`}>
+                              <CreditCard className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-sm dark:text-white leading-none mb-1">{exp.description}</h4>
+                              <p className="text-[9px] font-bold text-text-muted dark:text-light/40 uppercase tracking-widest">
+                                Automatisch • {exp.isRecurring ? 'Jaarlijks' : 'Eenmalig'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="text-sm font-black text-danger">€{exp.amount.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
-            {expenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(exp => (
-              <div key={exp.id} className={`bg-white dark:bg-dark-card border border-primary/5 p-5 rounded-2xl flex items-center justify-between group ${editingExpenseId === exp.id ? 'opacity-50 pointer-events-none' : ''}`}>
+              );
+            })()}
+            {filteredExpenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(exp => (
+              <div 
+                key={exp.id} 
+                onClick={() => setItemActionMenu({ type: 'expense', id: exp.id, data: exp })}
+                className={`bg-white dark:bg-dark-card border border-primary/5 p-5 rounded-2xl flex items-center justify-between group cursor-pointer hover:border-danger/20 transition-all ${editingExpenseId === exp.id ? 'opacity-50 pointer-events-none' : ''}`}
+              >
                 <div className="flex items-center space-x-4">
                   <div className={`p-3 rounded-xl bg-danger/10 text-danger`}>
                     <CreditCard className="w-4 h-4" />
@@ -584,18 +701,12 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm font-black text-danger mr-3">€{exp.amount.toLocaleString()}</span>
-                  <button onClick={() => startEditExpense(exp)} className="p-2 text-danger opacity-0 group-hover:opacity-100 transition-all hover:bg-danger/10 rounded-lg">
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => deleteExpense(exp.id)} className="p-2 text-danger opacity-0 group-hover:opacity-100 transition-all hover:bg-danger/10 rounded-lg">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <div className="flex items-center">
+                  <span className="text-sm font-black text-danger">€{exp.amount.toLocaleString()}</span>
                 </div>
               </div>
             ))}
-            {expenses.length === 0 && expectedExpenses.length === 0 && !isAddingExpense && (
+            {filteredExpenses.length === 0 && expandedExpectedExpenses.length === 0 && !isAddingExpense && (
               <div className="py-12 text-center bg-light/30 dark:bg-dark/20 border-2 border-dashed border-danger/10 rounded-3xl">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-40">Geen uitgaven geregistreerd</p>
               </div>
@@ -639,26 +750,24 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
           <div className="space-y-4">
             {recurringItems.length > 0 ? (
               recurringItems.map((item, idx) => (
-                <div key={item.id || idx} className={`bg-white dark:bg-dark-card border border-primary/5 p-5 rounded-2xl flex items-center justify-between group ${editingRecurringId === item.id ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div 
+                  key={item.id || idx} 
+                  onClick={() => setItemActionMenu({ type: 'recurring', id: item.id, data: item })}
+                  className={`bg-white dark:bg-dark-card border-2 p-5 rounded-2xl flex items-center justify-between group cursor-pointer transition-all ${item.isInvoiced ? 'border-primary/5' : 'border-success/20 shadow-sm shadow-success/5'} ${editingRecurringId === item.id ? 'opacity-50 pointer-events-none' : ''}`}
+                >
                   <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-info/10 text-info rounded-xl">
-                      <Calendar className="w-4 h-4" />
+                    <div className={`p-2 rounded-xl ${item.isInvoiced ? 'bg-info/10 text-info' : 'bg-success/10 text-success'}`}>
+                      {item.isInvoiced ? <Calendar className="w-4 h-4" /> : <Receipt className="w-4 h-4" />}
                     </div>
                     <div>
                       <h4 className="font-bold text-sm dark:text-white leading-none mb-1">{item.description} {item.isCustom && <span className="text-[9px] text-info bg-info/10 px-1.5 py-0.5 rounded ml-2">Aangepast</span>}</h4>
                       <p className="text-[9px] font-bold text-text-muted dark:text-light/40 uppercase tracking-widest">
-                        Jaarlijks
+                        Jaarlijks {!item.isInvoiced && '• Actie vereist'}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <span className="text-sm font-black text-info mr-3">€{item.amount.toLocaleString()}</span>
-                    <button onClick={() => startEditRecurring(item)} className="p-2 text-info opacity-0 group-hover:opacity-100 transition-all hover:bg-info/10 rounded-lg">
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => deleteRecurring(item.id, item.isCustom)} className="p-2 text-danger opacity-0 group-hover:opacity-100 transition-all hover:bg-danger/10 rounded-lg">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <span className={`text-sm font-black ${item.isInvoiced ? 'text-info' : 'text-success'}`}>€{item.amount.toLocaleString()}</span>
                   </div>
                 </div>
               ))
@@ -670,6 +779,108 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
           </div>
         </div>
       </div>
+      {/* Item Action Menu Modal */}
+      {itemActionMenu && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm" onClick={() => setItemActionMenu(null)} />
+          <div className="relative w-full max-w-sm bg-white dark:bg-dark-card rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 md:p-8 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-text-main dark:text-white leading-tight">{itemActionMenu.data.description}</h3>
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">Beheer onderdeel</p>
+                </div>
+                <button onClick={() => setItemActionMenu(null)} className="p-2 bg-slate-100 dark:bg-dark text-text-muted hover:text-primary rounded-xl transition-all">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                {itemActionMenu.type === 'invoice' && (
+                  <button
+                    onClick={() => { toggleInvoiceReceived(itemActionMenu.id); setItemActionMenu(null); }}
+                    className={`flex items-center space-x-4 p-4 rounded-2xl transition-all ${itemActionMenu.data.isReceived ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'} hover:scale-[1.02]`}
+                  >
+                    <div className={`p-2 rounded-lg ${itemActionMenu.data.isReceived ? 'bg-warning/20' : 'bg-success/20'}`}>
+                      {itemActionMenu.data.isReceived ? <Circle className="w-5 h-5" /> : <Check className="w-5 h-5" />}
+                    </div>
+                    <span className="font-bold text-sm">{itemActionMenu.data.isReceived ? 'Markeer als niet ontvangen' : 'Markeer als ontvangen'}</span>
+                  </button>
+                )}
+
+                {itemActionMenu.type === 'recurring' && !itemActionMenu.data.isInvoiced && (
+                  <button
+                    onClick={() => {
+                      setNewInvoice({ description: itemActionMenu.data.description, type: 'amount', value: itemActionMenu.data.amount.toString(), date: new Date().toISOString().split('T')[0], isReceived: false });
+                      setIsAddingInvoice(true);
+                      setItemActionMenu(null);
+                    }}
+                    className="flex items-center space-x-4 p-4 bg-success text-white rounded-2xl transition-all hover:scale-[1.02] shadow-lg shadow-success/20"
+                  >
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Receipt className="w-5 h-5" />
+                    </div>
+                    <span className="font-bold text-sm">Direct factureren</span>
+                  </button>
+                )}
+
+                {(itemActionMenu.type === 'invoice' || itemActionMenu.type === 'expense' || itemActionMenu.type === 'recurring') && (
+                  <button
+                    onClick={() => {
+                      if (itemActionMenu.type === 'invoice') startEditInvoice(itemActionMenu.data);
+                      if (itemActionMenu.type === 'expense') startEditExpense(itemActionMenu.data);
+                      if (itemActionMenu.type === 'recurring') startEditRecurring(itemActionMenu.data);
+                      setItemActionMenu(null);
+                    }}
+                    className="flex items-center space-x-4 p-4 bg-light dark:bg-dark/60 text-text-main dark:text-white rounded-2xl transition-all hover:bg-primary/10 hover:text-primary"
+                  >
+                    <div className="p-2 bg-white dark:bg-dark-card rounded-lg shadow-sm">
+                      <Edit3 className="w-5 h-5" />
+                    </div>
+                    <span className="font-bold text-sm">Bewerken</span>
+                  </button>
+                )}
+
+                {itemActionMenu.type === 'expected_expense' && (
+                  <button
+                    onClick={() => {
+                      triggerConfirm('Verbergen?', 'Weet je zeker dat je deze automatische uitgave wilt verbergen?', () => {
+                        onUpdate({ ...project, ignoredOneTime: [...(project.ignoredOneTime || []), itemActionMenu.data.originalId || itemActionMenu.data.id] });
+                        addToast('Automatische uitgave verborgen', 'info');
+                      });
+                      setItemActionMenu(null);
+                    }}
+                    className="flex items-center space-x-4 p-4 bg-danger/10 text-danger rounded-2xl transition-all hover:bg-danger hover:text-white"
+                  >
+                    <div className="p-2 bg-danger/20 rounded-lg">
+                      <X className="w-5 h-5" />
+                    </div>
+                    <span className="font-bold text-sm">Verbergen</span>
+                  </button>
+                )}
+
+                {itemActionMenu.type !== 'expected_expense' && (
+                  <button
+                    onClick={() => {
+                      if (itemActionMenu.type === 'invoice') deleteInvoice(itemActionMenu.id);
+                      if (itemActionMenu.type === 'expense') deleteExpense(itemActionMenu.id);
+                      if (itemActionMenu.type === 'recurring') deleteRecurring(itemActionMenu.data.originalId || itemActionMenu.id, itemActionMenu.data.isCustom);
+                      setItemActionMenu(null);
+                    }}
+                    className="flex items-center space-x-4 p-4 bg-danger/10 text-danger rounded-2xl transition-all hover:bg-danger hover:text-white"
+                  >
+                    <div className="p-2 bg-danger/20 rounded-lg">
+                      <Trash2 className="w-5 h-5" />
+                    </div>
+                    <span className="font-bold text-sm">Verwijderen</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Budget Breakdown Modal */}
       {showBudgetBreakdown && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">

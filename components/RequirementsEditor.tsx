@@ -99,20 +99,26 @@ export const getBudgetBreakdown = (requirements: string[], notes: Record<string,
   return breakdown;
 };
 
-export const getExpectedExpenses = (requirements: string[], prices: Prices, allProjects: Project[] = []) => {
+export const getExpectedExpenses = (requirements: string[], prices: Prices, allProjects: Project[] = [], globalPrices?: Prices) => {
   const expenses: { id: string; description: string; amount: number; isRecurring: boolean }[] = [];
   
   const getCostInfo = (key: keyof Prices, label: string): { amount: number, isRecurring: boolean } | null => {
     if (!requirements.includes(label)) return null;
-    let cost = prices[`${key}_cost` as keyof Prices] as number || 0;
+
+    const effectiveGlobalPrices = globalPrices || prices;
+    const dynamicData = effectiveGlobalPrices.dynamicPricing?.[key as string] || prices.dynamicPricing?.[key as string];
+    const isDynamic = dynamicData?.isDynamic || (effectiveGlobalPrices.dynamicCosts || []).includes(key as string) || (prices.dynamicCosts || []).includes(key as string);
+
+    const priceSource = isDynamic ? effectiveGlobalPrices : prices;
+
+    let cost = priceSource[`${key}_cost` as keyof Prices] as number || 0;
     let isRecurring = true;
     
-    const dynamicData = prices.dynamicPricing?.[key as string];
     if (dynamicData && dynamicData.isDynamic) {
       isRecurring = dynamicData.isAnnual ?? true;
       const usageCount = allProjects.filter(p => (p.requirements || []).includes(label)).length || 1;
       cost = cost / usageCount;
-    } else if ((prices.dynamicCosts || []).includes(key as string)) {
+    } else if ((priceSource.dynamicCosts || []).includes(key as string)) {
       // Fallback for older data that still uses dynamicCosts array
       const usageCount = allProjects.filter(p => (p.requirements || []).includes(label)).length || 1;
       cost = cost / usageCount;
