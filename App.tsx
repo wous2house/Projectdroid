@@ -8,6 +8,7 @@ import Navbar from './components/Navbar';
 import ProfileModal from './components/ProfileModal';
 import Login from './components/Login';
 import AdminSettings from './components/AdminSettings';
+import DashboardStats from './components/DashboardStats';
 import CustomerManagement from './components/CustomerManagement';
 import Planning from './components/Planning';
 import { CheckCircle, XCircle, Info, X, AlertTriangle } from 'lucide-react';
@@ -31,7 +32,7 @@ const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
   const [prices, setPrices] = useState<Prices>(DEFAULT_PRICES);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeView, setActiveView] = useState<'dashboard' | 'customers' | 'planning'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'customers' | 'planning' | 'stats'>('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [deepLink, setDeepLink] = useState<ActivityDeepLink | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -309,7 +310,14 @@ const App: React.FC = () => {
             logActivity={logActivity}
             deepLink={deepLink}
             onClearDeepLink={() => setDeepLink(null)}
-          />        ) : activeView === 'dashboard' ? (
+          />
+        ) : activeView === 'stats' ? (
+          <DashboardStats
+            projects={projects}
+            customers={customers}
+            prices={prices}
+          />
+        ) : activeView === 'dashboard' ? (
           <Dashboard 
             projects={projects}
             customers={customers}

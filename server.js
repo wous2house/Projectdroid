@@ -123,7 +123,31 @@ export async function startServer(config = {}) {
   });
 
   app.post('/api/admin/restore', checkApiKey, (req, res) => {
-    saveData(req.body);
+    const currentData = getData();
+    const newData = req.body;
+
+    // Voorkom dat veilige cloud wachtwoorden worden overschreven door standaard lokale wachtwoorden bij een push
+    if (newData.users && currentData.users) {
+      newData.users = newData.users.map(newUser => {
+        const existingUser = currentData.users.find(u => u.email === newUser.email);
+        if (existingUser) {
+          // Als het nieuwe wachtwoord een standaardwaarde is, behoud dan het veilige cloud wachtwoord
+          if (newUser.password === 'admin' || newUser.password === 'password123' || !newUser.password) {
+            newUser.password = existingUser.password;
+          }
+        }
+        return newUser;
+      });
+
+      // Zorg dat gebruikers die op de cloud staan maar niet lokaal, niet zomaar verdwijnen als er nog nooit een pull is gedaan
+      currentData.users.forEach(existingUser => {
+        if (!newData.users.find(u => u.email === existingUser.email)) {
+          newData.users.push(existingUser);
+        }
+      });
+    }
+
+    saveData(newData);
     res.json({ message: 'Success' });
   });
 

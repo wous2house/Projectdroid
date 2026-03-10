@@ -1,5 +1,5 @@
 import React from 'react';
-import { Moon, Sun, Plus, Layout, Users, Home, Calendar } from 'lucide-react';
+import { Moon, Sun, Plus, Layout, Users, Home, Calendar, BarChart3 } from 'lucide-react';
 import { User } from '../types';
 
 interface NavbarProps {
@@ -10,8 +10,8 @@ interface NavbarProps {
   user: User;
   onProfileClick: () => void;
   onCreateProjectClick: () => void;
-  activeView: 'dashboard' | 'customers' | 'planning';
-  onSwitchView: (view: 'dashboard' | 'customers' | 'planning') => void;
+  activeView: 'dashboard' | 'customers' | 'planning' | 'stats';
+  onSwitchView: (view: 'dashboard' | 'customers' | 'planning' | 'stats') => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ 
@@ -51,6 +51,13 @@ const Navbar: React.FC<NavbarProps> = ({
 
           {/* Desktop View Switcher */}
           <div className="hidden md:flex items-center bg-light/50 dark:bg-dark-card/50 p-1 rounded-2xl border border-primary/5 dark:border-white/5 ml-4">
+            <button 
+              onClick={() => onSwitchView('stats')}
+              className={`flex items-center space-x-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'stats' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-muted hover:bg-primary/5 dark:text-light/40 dark:hover:text-light'}`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
+            </button>
             <button 
               onClick={() => onSwitchView('dashboard')}
               className={`flex items-center space-x-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'dashboard' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-muted hover:bg-primary/5 dark:text-light/40 dark:hover:text-light'}`}
@@ -103,13 +110,23 @@ const Navbar: React.FC<NavbarProps> = ({
       {/* Mobile Bottom Navbar - Elevated z-index to stay above modals */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[6000] bg-white/95 dark:bg-dark/95 backdrop-blur-2xl border-t border-primary/5 dark:border-white/10 h-20 px-6 flex items-center justify-around shadow-2xl">
         <button 
+          onClick={() => onSwitchView('stats')}
+          className={`flex flex-col items-center justify-center space-y-1 transition-all ${activeView === 'stats' ? 'text-primary' : 'text-text-muted dark:text-light/40'}`}
+        >
+          <div className={`p-2 rounded-xl transition-all ${activeView === 'stats' ? 'bg-primary/10' : ''}`}>
+            <BarChart3 className="w-6 h-6" />
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-widest">Dash</span>
+        </button>
+
+        <button 
           onClick={() => onSwitchView('dashboard')}
           className={`flex flex-col items-center justify-center space-y-1 transition-all ${activeView === 'dashboard' ? 'text-primary' : 'text-text-muted dark:text-light/40'}`}
         >
           <div className={`p-2 rounded-xl transition-all ${activeView === 'dashboard' ? 'bg-primary/10' : ''}`}>
             <Home className="w-6 h-6" />
           </div>
-          <span className="text-[9px] font-black uppercase tracking-widest">Projecten</span>
+          <span className="text-[9px] font-black uppercase tracking-widest">Proj</span>
         </button>
 
         <button 
@@ -129,7 +146,7 @@ const Navbar: React.FC<NavbarProps> = ({
           <div className={`p-2 rounded-xl transition-all ${activeView === 'customers' ? 'bg-primary/10' : ''}`}>
             <Users className="w-6 h-6" />
           </div>
-          <span className="text-[9px] font-black uppercase tracking-widest">Klanten</span>
+          <span className="text-[9px] font-black uppercase tracking-widest">Klant</span>
         </button>
       </div>
     </>

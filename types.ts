@@ -114,6 +114,9 @@ export interface Prices {
   onderhoud_light: number;
   onderhoud_medium: number;
   onderhoud_strong: number;
+  type_add_website: number;
+  type_edit_website: number;
+  type_fix_website: number;
   apiToPostsOptions?: string[];
   dynamicCosts?: string[];
   dynamicPricing?: Record<string, { isDynamic: boolean; isUnlimited: boolean; limit?: number; isAnnual?: boolean }>;

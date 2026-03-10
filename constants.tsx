@@ -24,6 +24,9 @@ export const DEFAULT_PRICES: Prices = {
   onderhoud_light: 500,
   onderhoud_medium: 750,
   onderhoud_strong: 975,
+  type_add_website: 0,
+  type_edit_website: 0,
+  type_fix_website: 0,
   apiToPostsOptions: [
     'ForceFlow', 'Ubeeo', 'Recruitee', 'Workday', 'Otys', 'Talent Soft',
     'People XS', 'Visma EasyCruit', 'SAP SuccesFactors', 'Oracle',

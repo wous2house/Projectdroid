@@ -23,6 +23,18 @@ export const calculatePrice = (requirements: string[], notes: Record<string, str
     if (size === 'Premium') oneTime += prices.type_landing_premium;
   }
 
+  if (requirements.includes('type_add_website')) {
+    oneTime += prices.type_add_website;
+  }
+
+  if (requirements.includes('type_edit_website')) {
+    oneTime += prices.type_edit_website;
+  }
+
+  if (requirements.includes('type_fix_website')) {
+    oneTime += prices.type_fix_website;
+  }
+
   if (!isLanding) {
     if (requirements.includes('wp_elementor')) oneTime += prices.wp_elementor;
     if (requirements.includes('wp_forms')) {
@@ -83,6 +95,18 @@ export const getBudgetBreakdown = (requirements: string[], notes: Record<string,
     const size = notes['type_landing_size'];
     if (size === 'Standaard') breakdown.push({ label: `Landingspagina (Standaard)`, price: prices.type_landing_standaard, isRecurring: false });
     if (size === 'Premium') breakdown.push({ label: `Landingspagina (Premium)`, price: prices.type_landing_premium, isRecurring: false });
+  }
+
+  if (requirements.includes('type_add_website')) {
+    breakdown.push({ label: `Toevoeging website`, price: prices.type_add_website, isRecurring: false });
+  }
+
+  if (requirements.includes('type_edit_website')) {
+    breakdown.push({ label: `Aanpassing website`, price: prices.type_edit_website, isRecurring: false });
+  }
+
+  if (requirements.includes('type_fix_website')) {
+    breakdown.push({ label: `Fix website`, price: prices.type_fix_website, isRecurring: false });
   }
 
   if (requirements.includes('wp_api_to_posts')) {
@@ -152,6 +176,9 @@ export const getExpectedExpenses = (requirements: string[], prices: Prices, allP
 
 export const REQ_LABELS: Record<string, string> = {
   bouw_website: 'Bouw website',
+  type_add_website: 'Toevoeging website',
+  type_edit_website: 'Aanpassing website',
+  type_fix_website: 'Fix website',
   type_werken_bij: 'Werken-bij site',
   type_landing: 'Landingspagina',
   type_corporate: 'Corporate website',
@@ -174,6 +201,9 @@ export const REQ_LABELS: Record<string, string> = {
 
 export const REQ_ORDER = [
   'bouw_website',
+  'type_add_website',
+  'type_edit_website',
+  'type_fix_website',
   'type_werken_bij',
   'type_landing',
   'type_corporate',
@@ -357,7 +387,12 @@ const RequirementsEditor: React.FC<RequirementsEditorProps> = ({ requirements, r
 
   return (
     <div className="space-y-6">
-      {renderReqCheckbox("bouw_website", undefined, true)}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {renderReqCheckbox("bouw_website", undefined, true)}
+        {renderReqCheckbox("type_add_website", undefined, true)}
+        {renderReqCheckbox("type_edit_website", undefined, true)}
+        {renderReqCheckbox("type_fix_website", undefined, true)}
+      </div>
     
       {hasReq('bouw_website') && (
         <div className="ml-3 pl-7 py-2 border-l-2 border-slate-200 dark:border-white/10 space-y-6">
