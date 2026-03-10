@@ -184,7 +184,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
-              'x-api-key': syncApiKey
+              'x-api-key': syncApiKey,
+              'Authorization': `Bearer ${syncApiKey}`
             },
             body: JSON.stringify(state)
           });
@@ -218,7 +219,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({
           const cleanUrl = syncUrl.replace(/\/$/, '');
           const response = await fetch(`${cleanUrl}/api/data`, {
             headers: {
-              'x-api-key': syncApiKey
+              'x-api-key': syncApiKey,
+              'Authorization': `Bearer ${syncApiKey}`
             }
           });
           if (response.ok) {

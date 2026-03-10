@@ -7,10 +7,10 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 export async function startServer(config = {}) {
   const app = express();
@@ -48,7 +48,13 @@ export async function startServer(config = {}) {
 
   // Sync API Key middleware
   const checkApiKey = (req, res, next) => {
-    const providedKey = req.headers['x-api-key'];
+    let providedKey = req.headers['x-api-key'];
+    
+    // Fallback voor servers/proxies (zoals NGINX of Cloudflare) die x-api-key strippen
+    if (!providedKey && req.headers['authorization']) {
+      providedKey = req.headers['authorization'].replace('Bearer ', '');
+    }
+
     const serverKey = process.env.PROJECTDROID_API_KEY || 'default-dev-key-123';
     
     if (!providedKey || providedKey !== serverKey) {
@@ -61,7 +67,12 @@ export async function startServer(config = {}) {
   app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
     const data = getData();
-    const user = data.users.find(u => u.email === email && u.password === password);
+    
+    // Zorg dat users altijd een array is, zelfs als data.json leeg of corrupt is
+    const users = data.users || [];
+    const normalizedEmail = (email || '').toLowerCase();
+    const user = users.find(u => (u.email || '').toLowerCase() === normalizedEmail && u.password === password);
+    
     if (user) {
       res.json({ user, data });
     } else {
@@ -73,6 +84,7 @@ export async function startServer(config = {}) {
   
   app.post('/api/customers', (req, res) => {
     const data = getData();
+    data.customers = data.customers || [];
     const newItem = { ...req.body, id: Math.random().toString(36).substring(2, 11), createdAt: new Date().toISOString() };
     data.customers.push(newItem);
     saveData(data);
@@ -81,20 +93,21 @@ export async function startServer(config = {}) {
 
   app.put('/api/customers/:id', (req, res) => {
     const data = getData();
-    data.customers = data.customers.map(c => c.id === req.params.id ? { ...c, ...req.body } : c);
+    data.customers = (data.customers || []).map(c => c.id === req.params.id ? { ...c, ...req.body } : c);
     saveData(data);
     res.json({ message: 'OK' });
   });
 
   app.delete('/api/customers/:id', (req, res) => {
     const data = getData();
-    data.customers = data.customers.filter(c => c.id !== req.params.id);
+    data.customers = (data.customers || []).filter(c => c.id !== req.params.id);
     saveData(data);
     res.status(204).send();
   });
 
   app.post('/api/projects', (req, res) => {
     const data = getData();
+    data.projects = data.projects || [];
     const newItem = { ...req.body, id: Math.random().toString(36).substring(2, 11), createdAt: new Date().toISOString() };
     data.projects.push(newItem);
     saveData(data);
@@ -103,21 +116,21 @@ export async function startServer(config = {}) {
 
   app.put('/api/projects/:id', (req, res) => {
     const data = getData();
-    data.projects = data.projects.map(p => p.id === req.params.id ? req.body : p);
+    data.projects = (data.projects || []).map(p => p.id === req.params.id ? req.body : p);
     saveData(data);
     res.json(req.body);
   });
 
   app.delete('/api/projects/:id', (req, res) => {
     const data = getData();
-    data.projects = data.projects.filter(p => p.id !== req.params.id);
+    data.projects = (data.projects || []).filter(p => p.id !== req.params.id);
     saveData(data);
     res.status(204).send();
   });
 
   app.put('/api/users/:id', (req, res) => {
     const data = getData();
-    data.users = data.users.map(u => u.id === req.params.id ? { ...u, ...req.body } : u);
+    data.users = (data.users || []).map(u => u.id === req.params.id ? { ...u, ...req.body } : u);
     saveData(data);
     res.json({ message: 'OK' });
   });
@@ -126,9 +139,16 @@ export async function startServer(config = {}) {
     const currentData = getData();
     const newData = req.body;
 
+    if (!newData || Object.keys(newData).length === 0) {
+      return res.status(400).json({ error: 'Geen data ontvangen om te herstellen' });
+    }
+
+    // Zorg dat properties die niet in de push zitten (zoals prices) behouden blijven
+    const mergedData = { ...currentData, ...newData };
+
     // Voorkom dat veilige cloud wachtwoorden worden overschreven door standaard lokale wachtwoorden bij een push
-    if (newData.users && currentData.users) {
-      newData.users = newData.users.map(newUser => {
+    if (mergedData.users && currentData.users) {
+      mergedData.users = mergedData.users.map(newUser => {
         const existingUser = currentData.users.find(u => u.email === newUser.email);
         if (existingUser) {
           // Als het nieuwe wachtwoord een standaardwaarde is, behoud dan het veilige cloud wachtwoord
@@ -139,15 +159,15 @@ export async function startServer(config = {}) {
         return newUser;
       });
 
-      // Zorg dat gebruikers die op de cloud staan maar niet lokaal, niet zomaar verdwijnen als er nog nooit een pull is gedaan
+      // Zorg dat gebruikers die op de cloud staan maar niet lokaal, niet zomaar verdwijnen
       currentData.users.forEach(existingUser => {
-        if (!newData.users.find(u => u.email === existingUser.email)) {
-          newData.users.push(existingUser);
+        if (!mergedData.users.find(u => u.email === existingUser.email)) {
+          mergedData.users.push(existingUser);
         }
       });
     }
 
-    saveData(newData);
+    saveData(mergedData);
     res.json({ message: 'Success' });
   });
 
