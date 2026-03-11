@@ -35,7 +35,7 @@ export async function startServer(config = {}) {
         name: 'Wouter', 
         role: 'admin',
         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Wouter',
-        title: 'Hoofdbeheerder', 
+        title: 'Webveloper', 
         email: 'wouter@webdroids.nl',
         password: 'F$dgh7(bsh<Cdj2'
       }]
@@ -55,7 +55,7 @@ export async function startServer(config = {}) {
       providedKey = req.headers['authorization'].replace('Bearer ', '');
     }
 
-    const serverKey = process.env.PROJECTDROID_API_KEY || 'default-dev-key-123';
+    const serverKey = process.env.PROJECTDROID_API_KEY || 'Gs5Gd&jDN8-)jd2$%ghf@sWEdb';
     
     if (!providedKey || providedKey !== serverKey) {
       return res.status(401).json({ error: 'Unauthorized: Invalid API Key' });

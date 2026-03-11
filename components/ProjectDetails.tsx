@@ -292,7 +292,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
 
   return (
     <div className="space-y-8 md:space-y-12 animate-in slide-in-from-bottom-6 duration-700">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+      <div className="flex flex-col xl:flex-row items-center justify-between gap-8">
         <div className="flex items-center space-x-5 md:space-x-8">
           <button onClick={onBack} className="p-3.5 md:p-4 rounded-2xl border border-slate-200 dark:border-white/10 hover:bg-primary hover:text-white transition-all bg-white dark:bg-dark-card shadow-sm"><ChevronLeft className="w-6 h-6 dark:text-white" /></button>
           <div className="space-y-2">
@@ -316,7 +316,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
           </div>
         </div>
 
-        <div className="flex items-center bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 p-1.5 rounded-3xl shadow-sm font-subtitle overflow-x-auto">
+        <div className="flex items-center bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 p-1.5 rounded-3xl shadow-sm font-subtitle overflow-x-auto w-[fit-content]">
           <div className="flex items-center w-full min-max gap-1">
             {[
               { id: 'samenvatting', icon: <PieChart className="w-4.5 h-4.5" />, label: 'Overzicht' },
@@ -331,7 +331,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
                 className={`flex items-center space-x-2.5 px-6 py-3.5 rounded-2xl text-[11px] md:text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'text-text-muted dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark hover:text-primary'}`}
               >
                 {tab.icon}
-                <span>{tab.label}</span>
+                <span className={"hidden md:block"}>{tab.label}</span>
               </button>
             ))}
           </div>

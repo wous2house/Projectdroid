@@ -189,7 +189,7 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, pr
         <h2 className="text-3xl font-black text-text-main dark:text-white tracking-tighter">Dashboard & Statistieken</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         <div 
           onClick={() => setDetailModal({ title: 'Actieve Projecten', items: filteredProjects.map(p => ({ project: p })), isCurrency: false })}
           className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 p-6 rounded-[32px] shadow-sm flex flex-col items-center justify-center text-center group hover:border-primary/50 transition-colors cursor-pointer"

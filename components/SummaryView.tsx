@@ -99,8 +99,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
             <div className="p-3 bg-primary/10 rounded-2xl text-primary"><TrendingUp className="w-6 h-6" /></div>
           </div>
           <div className="flex items-baseline space-x-4 mb-8">
-            <span className="text-6xl md:text-8xl font-black text-primary tracking-tighter">{progressPercentage}%</span>
-            <span className="text-text-muted dark:text-slate-400 text-sm font-black uppercase tracking-widest opacity-60 font-subtitle">Gereed</span>
+            <span className="text-5xl lg:text-6xl xl:text-7xl font-black text-primary tracking-tighter">{progressPercentage}%</span>
+            {/*<span className="text-text-muted dark:text-slate-400 text-sm font-black uppercase tracking-widest opacity-60 font-subtitle">Gereed</span>*/}
           </div>
           <div className="w-full bg-slate-100 dark:bg-dark/60 rounded-full h-3.5 md:h-5 overflow-hidden border border-slate-200 dark:border-white/5 p-1">
             <div className={`h-full transition-all duration-1000 rounded-full ${progressPercentage === 100 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${progressPercentage}%` }} />
@@ -354,8 +354,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
               const userTasks = project.tasks.filter(t => t.assignees.includes(uId) && t.status !== TaskStatus.DONE);
               const user = allUsers.find(u => u.id === uId);
               return (
-                <div key={uId} className="flex items-center space-x-5 group">
-                  <div className="relative">
+                <div key={uId} className="flex flex-col sm:flex-row xl:flex-col 2xl:flex-row items-center sm:items-center xl:items-center 2xl:items-center space-y-3 sm:space-y-0 sm:space-x-5 xl:space-y-3 2xl:space-y-0 2xl:space-x-5 group text-center sm:text-left xl:text-center 2xl:text-left">
+                  <div className="relative flex-shrink-0">
                     <img 
                       src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uId}`} 
                       className="w-14 h-14 md:w-16 md:h-16 rounded-[22px] border-4 border-slate-100 dark:border-white/5 shadow-md group-hover:scale-110 transition-transform object-cover bg-white" 
@@ -363,8 +363,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
                     />
                     {userTasks.length > 0 && <div className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-white dark:border-dark-card">{userTasks.length}</div>}
                   </div>
-                  <div>
-                    <p className="text-base font-black text-text-main dark:text-white truncate max-w-[150px]">{user?.name || 'Teamlid'}</p>
+                  <div className="min-w-0">
+                    <p className="text-base font-black text-text-main dark:text-white truncate xl:max-w-none 2xl:max-w-[150px]">{user?.name || 'Teamlid'}</p>
                     <p className="text-xs text-text-muted dark:text-slate-400 font-bold uppercase tracking-widest opacity-70 mt-1">{user?.title || 'Droid'}</p>
                   </div>
                 </div>

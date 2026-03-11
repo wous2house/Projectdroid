@@ -43,9 +43,9 @@ const Navbar: React.FC<NavbarProps> = ({
               <span className="hidden sm:inline text-text-main dark:text-white font-black text-xl md:text-2xl tracking-tighter leading-none">
                 Projectdroid
               </span>
-              <span className="hidden sm:inline text-[8px] font-black uppercase tracking-[0.3em] text-primary opacity-60 mt-0.5">
+              {/*}<span className="hidden sm:inline text-[8px] font-black uppercase tracking-[0.3em] text-primary opacity-60 mt-0.5">
                 Professional
-              </span>
+              </span>*/}
             </div>
           </button>
 
@@ -56,28 +56,28 @@ const Navbar: React.FC<NavbarProps> = ({
               className={`flex items-center space-x-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'stats' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-muted hover:bg-primary/5 dark:text-light/40 dark:hover:text-light'}`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
-              <span>Dashboard</span>
+              <span className={"hidden lg:block"}>Dashboard</span>
             </button>
             <button 
               onClick={() => onSwitchView('dashboard')}
               className={`flex items-center space-x-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'dashboard' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-muted hover:bg-primary/5 dark:text-light/40 dark:hover:text-light'}`}
             >
               <Layout className="w-3.5 h-3.5" />
-              <span>Projecten</span>
+              <span className={"hidden lg:block"}>Projecten</span>
             </button>
             <button 
               onClick={() => onSwitchView('planning')}
               className={`flex items-center space-x-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'planning' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-muted hover:bg-primary/5 dark:text-light/40 dark:hover:text-light'}`}
             >
               <Calendar className="w-3.5 h-3.5" />
-              <span>Planning</span>
+              <span className={"hidden lg:block"}>Planning</span>
             </button>
             <button 
               onClick={() => onSwitchView('customers')}
               className={`flex items-center space-x-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'customers' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-text-muted hover:bg-primary/5 dark:text-light/40 dark:hover:text-light'}`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>Klanten</span>
+              <span className={"hidden lg:block"}>Klanten</span>
             </button>
           </div>
         </div>
