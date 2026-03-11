@@ -74,15 +74,17 @@ export const STATUS_COLORS = {
 };
 
 export const PROJECT_STATUS_COLORS = {
-  [ProjectStatus.PLANNING]: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  [ProjectStatus.ACTIVE]: 'bg-primary/20 text-primary dark:bg-primary/30 dark:text-blue-300',
-  [ProjectStatus.COMPLETED]: 'bg-success/20 text-success dark:bg-success/30 dark:text-success',
+  [ProjectStatus.OFFERTE]: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  [ProjectStatus.GEAKKOORDEERD]: 'bg-info/20 text-info dark:bg-info/30 dark:text-purple-300',
+  [ProjectStatus.ACTIEF]: 'bg-primary/20 text-primary dark:bg-primary/30 dark:text-blue-300',
+  [ProjectStatus.AFGEROND]: 'bg-success/20 text-success dark:bg-success/30 dark:text-success',
   [ProjectStatus.ON_HOLD]: 'bg-warning/20 text-warning-hover dark:bg-warning/30 dark:text-warning',
 };
 
 export const PROJECT_BORDER_COLORS = {
-  [ProjectStatus.PLANNING]: 'border-t-slate-400',
-  [ProjectStatus.ACTIVE]: 'border-t-primary',
-  [ProjectStatus.COMPLETED]: 'border-t-success',
+  [ProjectStatus.OFFERTE]: 'border-t-slate-400',
+  [ProjectStatus.GEAKKOORDEERD]: 'border-t-info',
+  [ProjectStatus.ACTIEF]: 'border-t-primary',
+  [ProjectStatus.AFGEROND]: 'border-t-success',
   [ProjectStatus.ON_HOLD]: 'border-t-warning',
 };

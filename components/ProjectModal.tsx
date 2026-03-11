@@ -16,15 +16,26 @@ interface ProjectModalProps {
 const ProjectModal: React.FC<ProjectModalProps> = ({ project, customers, users, prices, onSave, onClose }) => {
   const [name, setName] = useState(project?.name || '');
   const [description, setDescription] = useState(project?.description || '');
-  const [status, setStatus] = useState<ProjectStatus>(project?.status || ProjectStatus.PLANNING);
+  const [status, setStatus] = useState<ProjectStatus>(project?.status || ProjectStatus.OFFERTE);
   const [customerId, setCustomerId] = useState(project?.customerId || '');
   const [startDate, setStartDate] = useState(project?.startDate || new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(project?.endDate || '');
   const [team, setTeam] = useState<string[]>(project?.team || []);
   const [totalPrice, setTotalPrice] = useState<string>(project?.totalPrice?.toString() || '');
   const [priceNote, setPriceNote] = useState<string>(project?.priceNote || '');
+  const [isHourlyRateActive, setIsHourlyRateActive] = useState(project?.isHourlyRateActive || false);
+  const [hourlyRate, setHourlyRate] = useState<string>(project?.hourlyRate?.toString() || '');
   const [requirements, setRequirements] = useState<string[]>(project?.requirements || []);
   const [requirementNotes, setRequirementNotes] = useState<Record<string, string>>(project?.requirementNotes || {});
+
+  useEffect(() => {
+    if (customerId && isHourlyRateActive) {
+      const customer = customers.find(c => c.id === customerId);
+      if (customer && customer.hourlyRate && !hourlyRate) {
+        setHourlyRate(customer.hourlyRate.toString());
+      }
+    }
+  }, [customerId, isHourlyRateActive, customers, hourlyRate]);
 
   useEffect(() => {
     const { oneTime } = calculatePrice(requirements, requirementNotes, prices);
@@ -52,6 +63,8 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ project, customers, users, 
       team,
       totalPrice: totalPrice ? parseFloat(totalPrice) : undefined,
       priceNote: priceNote || undefined,
+      isHourlyRateActive,
+      hourlyRate: isHourlyRateActive && hourlyRate ? parseFloat(hourlyRate) : undefined,
       requirements,
       requirementNotes,
       lockedPrices: project?.lockedPrices || prices,
@@ -121,6 +134,29 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ project, customers, users, 
               {parseFloat(totalPrice) > 0 && (
                 <div className="ml-2 mt-1.5 text-[10px] font-bold text-primary/80">
                   Berekend: € {calculatePrice(requirements, requirementNotes, prices).oneTime.toFixed(2)} eenmalig
+                </div>
+              )}
+              <div className="flex items-center justify-between mt-4 bg-slate-50 dark:bg-dark/40 p-3 rounded-xl border border-slate-100 dark:border-white/5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-80 ml-1">Uurtarief Activeren</label>
+                <button
+                  type="button"
+                  onClick={() => setIsHourlyRateActive(!isHourlyRateActive)}
+                  className={`w-10 h-6 rounded-full transition-colors relative shadow-inner ${isHourlyRateActive ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-white shadow-sm absolute top-1 transition-transform ${isHourlyRateActive ? 'left-5' : 'left-1'}`}></div>
+                </button>
+              </div>
+              {isHourlyRateActive && (
+                <div className="mt-2 relative">
+                  <Euro className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={hourlyRate}
+                    onChange={e => setHourlyRate(e.target.value)}
+                    className="w-full bg-light dark:bg-dark rounded-xl pl-12 pr-6 py-3.5 font-bold text-sm outline-none border border-transparent focus:border-primary dark:text-white"
+                    placeholder="Uurtarief (€ / uur)"
+                  />
                 </div>
               )}
             </div>            <div className="space-y-2">

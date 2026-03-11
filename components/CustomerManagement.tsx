@@ -26,7 +26,7 @@ const CustomerManagement: React.FC<CustomerManagementProps> = ({
   const editFileInputRef = useRef<HTMLInputElement>(null);
 
   const [formState, setFormState] = useState({
-    name: '', logo: '', email: '', phone: '', address: ''
+    name: '', logo: '', email: '', phone: '', address: '', hourlyRate: '' as string | number
   });
 
   // Reset selectie als de klant uit de lijst is verdwenen (bijv. na verwijdering)
@@ -52,15 +52,15 @@ const CustomerManagement: React.FC<CustomerManagementProps> = ({
     if (isEditing && selectedCustomerId) {
       const original = customers.find(c => c.id === selectedCustomerId);
       if (original) {
-        onUpdateCustomer({ ...original, ...formState });
+        onUpdateCustomer({ ...original, ...formState, hourlyRate: formState.hourlyRate ? Number(formState.hourlyRate) : undefined });
       }
       setIsEditing(false);
       setShowAddModal(false);
     } else {
-      onCreateCustomer(formState);
+      onCreateCustomer({ ...formState, hourlyRate: formState.hourlyRate ? Number(formState.hourlyRate) : undefined });
       setShowAddModal(false);
     }
-    setFormState({ name: '', logo: '', email: '', phone: '', address: '' });
+    setFormState({ name: '', logo: '', email: '', phone: '', address: '', hourlyRate: '' });
   };
 
   const startEdit = (customer: Customer) => {
@@ -69,7 +69,8 @@ const CustomerManagement: React.FC<CustomerManagementProps> = ({
       logo: customer.logo,
       email: customer.email,
       phone: customer.phone,
-      address: customer.address || ''
+      address: customer.address || '',
+      hourlyRate: customer.hourlyRate || ''
     });
     setIsEditing(true);
     setShowAddModal(true);
@@ -100,7 +101,7 @@ const CustomerManagement: React.FC<CustomerManagementProps> = ({
         <button 
           onClick={() => {
             setIsEditing(false);
-            setFormState({ name: '', logo: '', email: '', phone: '', address: '' });
+            setFormState({ name: '', logo: '', email: '', phone: '', address: '', hourlyRate: '' });
             setShowAddModal(true);
           }}
           className="bg-primary text-white px-8 py-4 rounded-[22px] font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-primary/20 flex items-center justify-center space-x-3 w-full sm:w-auto"
@@ -167,6 +168,7 @@ const CustomerManagement: React.FC<CustomerManagementProps> = ({
                         <div className="flex items-center space-x-2 text-text-muted dark:text-light/70 font-bold text-xs font-subtitle"><Mail className="w-3.5 h-3.5 text-primary" /> <span>{selectedCustomer.email}</span></div>
                         <div className="flex items-center space-x-2 text-text-muted dark:text-light/70 font-bold text-xs font-subtitle"><Phone className="w-3.5 h-3.5 text-primary" /> <span>{selectedCustomer.phone}</span></div>
                         {selectedCustomer.address && <div className="flex items-center space-x-2 text-text-muted dark:text-light/70 font-bold text-xs font-subtitle"><MapPin className="w-3.5 h-3.5 text-primary" /> <span>{selectedCustomer.address}</span></div>}
+                        {selectedCustomer.hourlyRate && <div className="flex items-center space-x-2 text-text-muted dark:text-light/70 font-bold text-xs font-subtitle"><span className="text-primary font-black">€</span> <span>{selectedCustomer.hourlyRate}/u</span></div>}
                       </div>
                     </div>
                   </div>
@@ -293,6 +295,11 @@ const CustomerManagement: React.FC<CustomerManagementProps> = ({
                   <label className="text-[10px] font-black uppercase tracking-widest text-text-muted dark:text-white/70 ml-2">Telefoon</label>
                   <input type="text" value={formState.phone} onChange={e => setFormState({...formState, phone: e.target.value})} className="w-full bg-light dark:bg-dark rounded-2xl px-6 py-4 font-bold text-sm outline-none border-2 border-transparent focus:border-primary transition-all dark:text-white" placeholder="06..." />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted dark:text-white/70 font-subtitle ml-2">Standaard Uurtarief (€)</label>
+                <input type="number" step="0.01" value={formState.hourlyRate} onChange={e => setFormState({...formState, hourlyRate: e.target.value})} className="w-full bg-light dark:bg-dark rounded-2xl px-6 py-4 font-bold text-sm outline-none border-2 border-transparent focus:border-primary transition-all dark:text-white" placeholder="Bijv. 75.00" />
               </div>
 
               <div className="flex space-x-4 pt-4 font-subtitle">

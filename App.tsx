@@ -32,7 +32,7 @@ const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
   const [prices, setPrices] = useState<Prices>(DEFAULT_PRICES);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeView, setActiveView] = useState<'dashboard' | 'customers' | 'planning' | 'stats'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'customers' | 'planning' | 'stats'>('stats');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [deepLink, setDeepLink] = useState<ActivityDeepLink | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -284,7 +284,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFF] dark:bg-dark transition-colors duration-300">
       <Navbar 
-        onLogoClick={() => { setSelectedProjectId(null); setActiveView('dashboard'); }}
+        onLogoClick={() => { setSelectedProjectId(null); setActiveView('stats'); }}
         isDarkMode={isDarkMode}
         onToggleMode={() => setIsDarkMode(!isDarkMode)}
         projectName={selectedProject?.name}
@@ -316,6 +316,7 @@ const App: React.FC = () => {
             projects={projects}
             customers={customers}
             prices={prices}
+            onSelectProject={id => { setSelectedProjectId(id); setActiveView('dashboard'); }}
           />
         ) : activeView === 'dashboard' ? (
           <Dashboard 

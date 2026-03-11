@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, TaskStatus, User, Prices } from '../types';
-import { CheckCircle2, Clock, AlertTriangle, Users, Calendar, TrendingUp, CheckSquare, Edit3, Save, MessageSquare, Check, AlignLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, Users, Calendar, TrendingUp, CheckSquare, Edit3, Save, MessageSquare, Check, AlignLeft, ChevronDown, ChevronUp, Play, Square } from 'lucide-react';
 import { isPast, formatDistanceToNow, format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import RequirementsEditor, { REQ_LABELS, REQ_ORDER, getIndentClass, calculatePrice } from './RequirementsEditor';
@@ -33,6 +33,50 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
   const projectTeamIds = project.team || [];
   
   const { oneTime, recurring, total } = calculatePrice(project.requirements || [], project.requirementNotes || {}, project.lockedPrices || prices);
+
+  const [currentSeconds, setCurrentSeconds] = useState(project.trackedSeconds || 0);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (project.isTimerRunning && project.timerStartedAt) {
+      interval = setInterval(() => {
+        const start = new Date(project.timerStartedAt!).getTime();
+        const now = Date.now();
+        const elapsed = Math.floor((now - start) / 1000);
+        setCurrentSeconds((project.trackedSeconds || 0) + elapsed);
+      }, 1000);
+    } else {
+      setCurrentSeconds(project.trackedSeconds || 0);
+    }
+    return () => clearInterval(interval);
+  }, [project.isTimerRunning, project.timerStartedAt, project.trackedSeconds]);
+
+  const toggleTimer = () => {
+    if (project.isTimerRunning) {
+      const start = new Date(project.timerStartedAt!).getTime();
+      const now = Date.now();
+      const elapsed = Math.floor((now - start) / 1000);
+      onUpdateProject({
+        ...project,
+        isTimerRunning: false,
+        trackedSeconds: (project.trackedSeconds || 0) + elapsed,
+        timerStartedAt: undefined
+      });
+    } else {
+      onUpdateProject({
+        ...project,
+        isTimerRunning: true,
+        timerStartedAt: new Date().toISOString()
+      });
+    }
+  };
+
+  const formatTime = (totalSeconds: number) => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   const saveRequirements = () => {
     onUpdateProject({ ...project, requirements: localReqs, requirementNotes: localNotes, description: localDescription });
@@ -274,6 +318,32 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
       </div>
 
       <div className="space-y-8">
+        {project.isHourlyRateActive && (
+          <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-[40px] p-10 shadow-sm transition-all hover:shadow-xl">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-muted dark:text-slate-400 flex items-center space-x-3 opacity-80 font-subtitle">
+                <Clock className="w-6 h-6 text-primary" />
+                <span>Urenregistratie</span>
+              </h3>
+              <div className="text-[10px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">
+                € {project.hourlyRate?.toFixed(2) || '0.00'} / u
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-center space-y-6">
+              <div className={`text-4xl md:text-5xl font-black font-mono tracking-wider ${project.isTimerRunning ? 'text-primary animate-pulse' : 'text-text-main dark:text-white'}`}>
+                {formatTime(currentSeconds)}
+              </div>
+              <button 
+                onClick={toggleTimer}
+                className={`flex items-center space-x-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${project.isTimerRunning ? 'bg-danger/10 text-danger hover:bg-danger hover:text-white' : 'bg-primary text-white hover:scale-105 shadow-xl shadow-primary/30'}`}
+              >
+                {project.isTimerRunning ? <Square className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
+                <span>{project.isTimerRunning ? 'Stop Timer' : 'Start Timer'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-[40px] p-10 shadow-sm transition-all hover:shadow-xl sticky top-28">
           <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-muted dark:text-slate-400 mb-10 flex items-center space-x-3 opacity-80 font-subtitle">
             <Users className="w-6 h-6 text-info" />

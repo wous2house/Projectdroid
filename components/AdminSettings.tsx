@@ -457,7 +457,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({
           ) : activeTab === 'database' ? (
             <div className="space-y-10 animate-in slide-in-from-right-4 font-subtitle">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-primary/5 dark:bg-white/5 border border-primary/10 p-10 rounded-[40px] space-y-6">
+                <div className="bg-primary/5 dark:bg-white/5 border border-primary/10 p-10 rounded-[40px] space-y-6 grid items-center">
                   <div className="p-4 bg-primary text-white rounded-2xl w-fit">
                     <Download className="w-8 h-8" />
                   </div>
@@ -473,7 +473,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({
                   </button>
                 </div>
 
-                <div className="bg-warning/5 border border-warning/10 p-10 rounded-[40px] space-y-6">
+                <div className="bg-warning/5 border border-warning/10 p-10 rounded-[40px] space-y-6 grid items-center">
                   <div className="p-4 bg-warning text-white rounded-2xl w-fit">
                     <Upload className="w-8 h-8" />
                   </div>

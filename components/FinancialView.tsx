@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Project, Invoice, Expense, Activity, Prices } from '../types';
-import { Plus, Trash2, CheckCircle2, Circle, Euro, TrendingUp, TrendingDown, Calendar, Receipt, CreditCard, AlertCircle, Check, PartyPopper, Info, X, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, Circle, Euro, TrendingUp, TrendingDown, Calendar, Receipt, CreditCard, AlertCircle, Check, PartyPopper, Info, X, Edit3, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { getBudgetBreakdown, getExpectedExpenses } from './RequirementsEditor';
@@ -92,7 +92,10 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
     return oneTimeItems.reduce((acc, item) => acc + item.amount, 0);
   }, [oneTimeItems]);
 
-  const totalPrice = calculatedOneTimePrice;
+  const trackedHours = (project.trackedSeconds || 0) / 3600;
+  const hourlyRevenue = project.isHourlyRateActive ? trackedHours * (project.hourlyRate || 0) : 0;
+
+  const totalPrice = calculatedOneTimePrice + hourlyRevenue;
   const invoices = project.invoices || [];
   const expenses = project.expenses || [];
 
@@ -429,7 +432,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
       </div>
 
       {/* Financial Health Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${project.isHourlyRateActive ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4 md:gap-6`}>
         <div className="bg-white dark:bg-dark-card p-6 md:p-8 rounded-3xl border border-primary/5 shadow-sm relative group">
           <div className="flex items-center justify-between text-text-muted dark:text-light/50 font-black text-[10px] uppercase tracking-widest mb-4">
             <div className="flex items-center space-x-2">
@@ -448,12 +451,23 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
           </div>
           
           <div className="space-y-1">
-            <p className="text-2xl md:text-3xl font-black text-text-main dark:text-white">€{totalPrice.toLocaleString()}</p>
+            <p className="text-2xl md:text-3xl font-black text-text-main dark:text-white">€{calculatedOneTimePrice.toLocaleString()}</p>
             {project.priceNote && (
               <p className="text-xs font-bold text-text-muted dark:text-light/60">{project.priceNote}</p>
             )}
           </div>
         </div>
+
+        {project.isHourlyRateActive && (
+          <div className="bg-white dark:bg-dark-card p-6 md:p-8 rounded-3xl border border-primary/5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between text-primary font-black text-[10px] uppercase tracking-widest">
+              <span>Uren Inkomsten</span>
+              <Clock className="w-4 h-4" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary">€{hourlyRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+            <p className="text-xs font-bold text-text-muted dark:text-light/60">{trackedHours.toFixed(2)} uur geregistreerd</p>
+          </div>
+        )}
 
         <div className="bg-white dark:bg-dark-card p-6 md:p-8 rounded-3xl border border-primary/5 shadow-sm space-y-4">
           <div className="flex items-center justify-between text-primary font-black text-[10px] uppercase tracking-widest">
@@ -494,13 +508,6 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
             <h3 className="text-xl font-black text-success uppercase tracking-tight">Project 100% Betaald!</h3>
             <p className="text-sm font-bold text-success/80 font-subtitle">Alle facturen voor dit project zijn succesvol ontvangen.</p>
           </div>
-        </div>
-      )}
-
-      {!project.totalPrice && (
-        <div className="bg-warning/5 border border-warning/20 p-6 rounded-3xl flex items-center space-x-4">
-          <AlertCircle className="w-6 h-6 text-warning" />
-          <p className="text-sm font-bold text-warning-hover font-subtitle">Er is nog geen totaal budget ingesteld. Pas de projectinstellingen aan om budgetbeheer te activeren.</p>
         </div>
       )}
 

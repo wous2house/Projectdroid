@@ -8,10 +8,11 @@ export enum TaskStatus {
 }
 
 export enum ProjectStatus {
-  PLANNING = 'Planning',
-  ACTIVE = 'Actief',
-  COMPLETED = 'Afgerond',
-  ON_HOLD = 'In de wacht'
+  OFFERTE = 'Voorstel',
+  GEAKKOORDEERD = 'Geakkoordeerd',
+  ON_HOLD = 'On Hold',
+  ACTIEF = 'Actief',
+  AFGEROND = 'Afgerond'
 }
 
 export interface Customer {
@@ -21,6 +22,7 @@ export interface Customer {
   email: string;
   phone: string;
   address?: string;
+  hourlyRate?: number;
   createdAt: string;
 }
 
@@ -149,6 +151,11 @@ export interface Project {
   customOneTime?: { id: string; description: string; amount: number }[];
   ignoredOneTime?: string[];
   overriddenOneTime?: Record<string, number>;
+  isHourlyRateActive?: boolean;
+  hourlyRate?: number;
+  trackedSeconds?: number;
+  isTimerRunning?: boolean;
+  timerStartedAt?: string;
 }
 
 export interface ActivityDeepLink {
