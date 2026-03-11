@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Project, TaskStatus, User, Prices } from '../types';
-import { CheckCircle2, Clock, AlertTriangle, Users, Calendar, TrendingUp, CheckSquare, Edit3, Save, MessageSquare, Check, AlignLeft, ChevronDown, ChevronUp, Play, Square } from 'lucide-react';
+import { Project, TaskStatus, User, Prices, TimeEntry } from '../types';
+import { CheckCircle2, Clock, AlertTriangle, Users, Calendar, TrendingUp, CheckSquare, Edit3, Save, MessageSquare, Check, AlignLeft, ChevronDown, ChevronUp, Play, Square, ToggleLeft, ToggleRight, BarChart3 } from 'lucide-react';
 import { isPast, formatDistanceToNow, format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import RequirementsEditor, { REQ_LABELS, REQ_ORDER, getIndentClass, calculatePrice } from './RequirementsEditor';
@@ -34,39 +34,71 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
   
   const { oneTime, recurring, total } = calculatePrice(project.requirements || [], project.requirementNotes || {}, project.lockedPrices || prices);
 
-  const [currentSeconds, setCurrentSeconds] = useState(project.trackedSeconds || 0);
+  const [timerTaskId, setTimerTaskId] = useState<string>(project.activeTimerTaskId || '');
+  const [timerIsBillable, setTimerIsBillable] = useState<boolean>(project.isTimerBillable ?? true);
+
+  const [currentSeconds, setCurrentSeconds] = useState(0);
 
   useEffect(() => {
+    // Sync local selected task if running
+    if (project.isTimerRunning && project.activeTimerTaskId !== undefined) {
+      setTimerTaskId(project.activeTimerTaskId);
+    }
+  }, [project.isTimerRunning, project.activeTimerTaskId]);
+
+  useEffect(() => {
+    // Calculate total time for the currently selected timerTaskId
+    const entriesForTask = (project.timeEntries || []).filter(e => e.taskId === timerTaskId);
+    const accumulated = entriesForTask.reduce((sum, e) => sum + e.durationSeconds, 0);
+
     let interval: NodeJS.Timeout;
-    if (project.isTimerRunning && project.timerStartedAt) {
+    if (project.isTimerRunning && project.timerStartedAt && project.activeTimerTaskId === timerTaskId) {
+      // If timer is running for THIS task, add the elapsed time
       interval = setInterval(() => {
         const start = new Date(project.timerStartedAt!).getTime();
         const now = Date.now();
         const elapsed = Math.floor((now - start) / 1000);
-        setCurrentSeconds((project.trackedSeconds || 0) + elapsed);
+        setCurrentSeconds(accumulated + elapsed);
       }, 1000);
     } else {
-      setCurrentSeconds(project.trackedSeconds || 0);
+      // Otherwise just show the static accumulated time for this task
+      setCurrentSeconds(accumulated);
     }
     return () => clearInterval(interval);
-  }, [project.isTimerRunning, project.timerStartedAt, project.trackedSeconds]);
+  }, [project.isTimerRunning, project.timerStartedAt, timerTaskId, project.timeEntries, project.activeTimerTaskId]);
 
   const toggleTimer = () => {
     if (project.isTimerRunning) {
       const start = new Date(project.timerStartedAt!).getTime();
       const now = Date.now();
       const elapsed = Math.floor((now - start) / 1000);
+      
+      const newEntry: TimeEntry = {
+        id: Math.random().toString(36).substring(2, 11),
+        taskId: project.activeTimerTaskId || '',
+        projectId: project.id,
+        startTime: project.timerStartedAt!,
+        endTime: new Date().toISOString(),
+        durationSeconds: elapsed,
+        isBillable: project.isHourlyRateActive ? (project.isTimerBillable ?? true) : false
+      };
+
       onUpdateProject({
         ...project,
         isTimerRunning: false,
         trackedSeconds: (project.trackedSeconds || 0) + elapsed,
-        timerStartedAt: undefined
+        timerStartedAt: undefined,
+        activeTimerTaskId: undefined,
+        isTimerBillable: undefined,
+        timeEntries: [...(project.timeEntries || []), newEntry]
       });
     } else {
       onUpdateProject({
         ...project,
         isTimerRunning: true,
-        timerStartedAt: new Date().toISOString()
+        timerStartedAt: new Date().toISOString(),
+        activeTimerTaskId: timerTaskId,
+        isTimerBillable: timerIsBillable
       });
     }
   };
@@ -89,6 +121,17 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
     setLocalDescription(project.description || '');
     setIsEditingReqs(false);
   };
+
+  const timeEntries = project.timeEntries || [];
+  const timePerTask = project.tasks.map(task => {
+    const taskEntries = timeEntries.filter(e => e.taskId === task.id);
+    const seconds = taskEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
+    const hasBillable = taskEntries.some(e => e.isBillable);
+    return { id: task.id, name: task.name, seconds, hasBillable };
+  }).filter(t => t.seconds > 0).sort((a,b) => b.seconds - a.seconds);
+  
+  const totalTrackedSeconds = timeEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
+  const maxSeconds = Math.max(...timePerTask.map(t => t.seconds), 1);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-8 md:gap-12 font-sans">
@@ -318,28 +361,85 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
       </div>
 
       <div className="space-y-8">
-        {project.isHourlyRateActive && (
-          <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-[40px] p-10 shadow-sm transition-all hover:shadow-xl">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-muted dark:text-slate-400 flex items-center space-x-3 opacity-80 font-subtitle">
-                <Clock className="w-6 h-6 text-primary" />
-                <span>Urenregistratie</span>
-              </h3>
+        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-[40px] p-10 shadow-sm transition-all hover:shadow-xl">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-muted dark:text-slate-400 flex items-center space-x-3 opacity-80 font-subtitle">
+              <Clock className="w-6 h-6 text-primary" />
+              <span>Urenregistratie</span>
+            </h3>
+            {project.isHourlyRateActive && (
               <div className="text-[10px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">
                 € {project.hourlyRate?.toFixed(2) || '0.00'} / u
               </div>
-            </div>
-            <div className="flex flex-col items-center justify-center space-y-6">
-              <div className={`text-4xl md:text-5xl font-black font-mono tracking-wider ${project.isTimerRunning ? 'text-primary animate-pulse' : 'text-text-main dark:text-white'}`}>
-                {formatTime(currentSeconds)}
-              </div>
-              <button 
-                onClick={toggleTimer}
-                className={`flex items-center space-x-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${project.isTimerRunning ? 'bg-danger/10 text-danger hover:bg-danger hover:text-white' : 'bg-primary text-white hover:scale-105 shadow-xl shadow-primary/30'}`}
+            )}
+          </div>
+          
+          <div className="mb-6 space-y-4 font-subtitle">
+            <div className="flex flex-col space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Koppel aan taak</label>
+              <select 
+                value={timerTaskId} 
+                onChange={(e) => setTimerTaskId(e.target.value)}
+                disabled={project.isTimerRunning}
+                className="bg-slate-50 dark:bg-dark/50 border border-slate-200 dark:border-white/10 p-3 rounded-2xl outline-none focus:border-primary text-xs font-bold dark:text-white"
               >
-                {project.isTimerRunning ? <Square className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
-                <span>{project.isTimerRunning ? 'Stop Timer' : 'Start Timer'}</span>
-              </button>
+                <option value="">Geen taak (Algemeen)</option>
+                {project.tasks.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+            {project.isHourlyRateActive && (
+              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-dark/50 border border-slate-200 dark:border-white/10 rounded-2xl cursor-pointer" onClick={() => !project.isTimerRunning && setTimerIsBillable(!timerIsBillable)}>
+                <span className="text-[11px] font-bold text-text-main dark:text-white">Factureerbaar</span>
+                <button disabled={project.isTimerRunning} className={`${timerIsBillable ? 'text-primary' : 'text-text-muted'} transition-colors`}>
+                  {timerIsBillable ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6" />}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col items-center justify-center space-y-6">
+            <div className={`text-4xl md:text-5xl font-black font-mono tracking-wider ${project.isTimerRunning ? 'text-primary animate-pulse' : 'text-text-main dark:text-white'}`}>
+              {formatTime(currentSeconds)}
+            </div>
+            <button 
+              onClick={toggleTimer}
+              className={`flex items-center space-x-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${project.isTimerRunning ? 'bg-danger/10 text-danger hover:bg-danger hover:text-white' : 'bg-primary text-white hover:scale-105 shadow-xl shadow-primary/30'}`}
+            >
+              {project.isTimerRunning ? <Square className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
+              <span>{project.isTimerRunning ? 'Stop Timer' : 'Start Timer'}</span>
+            </button>
+          </div>
+        </div>
+
+        {timePerTask.length > 0 && (
+          <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-[40px] p-10 shadow-sm transition-all hover:shadow-xl">
+             <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-muted dark:text-slate-400 flex items-center space-x-3 opacity-80 font-subtitle">
+                <BarChart3 className="w-6 h-6 text-primary" />
+                <span>Tijd per taak</span>
+              </h3>
+            </div>
+            <div className="space-y-5">
+              {timePerTask.map(t => (
+                <div key={t.id} className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold font-subtitle">
+                    <div className="flex items-center space-x-3 truncate pr-2">
+                      <span className="text-text-main dark:text-white truncate">{t.name || 'Algemeen'}</span>
+                      {project.isHourlyRateActive && t.hasBillable && <span className="text-[8px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-md uppercase flex-shrink-0">Factuur</span>}
+                    </div>
+                    <span className="text-primary font-black font-mono flex-shrink-0">{formatTime(t.seconds)}</span>
+                  </div>
+                  <div className="w-full bg-slate-100 dark:bg-dark/60 rounded-full h-2 overflow-hidden">
+                    <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${(t.seconds / maxSeconds) * 100}%` }}></div>
+                  </div>
+                </div>
+              ))}
+              <div className="pt-4 mt-4 border-t border-slate-100 dark:border-white/5 flex justify-between items-center text-sm font-black text-text-main dark:text-white uppercase tracking-wider font-subtitle">
+                <span>Totaal Getimed</span>
+                <span className="font-mono text-primary">{formatTime(totalTrackedSeconds)}</span>
+              </div>
             </div>
           </div>
         )}

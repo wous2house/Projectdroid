@@ -156,6 +156,20 @@ export interface Project {
   trackedSeconds?: number;
   isTimerRunning?: boolean;
   timerStartedAt?: string;
+  activeTimerTaskId?: string;
+  isTimerBillable?: boolean;
+  timeEntries?: TimeEntry[];
+}
+
+export interface TimeEntry {
+  id: string;
+  taskId: string;
+  projectId: string;
+  userId?: string;
+  startTime: string;
+  endTime?: string;
+  durationSeconds: number;
+  isBillable: boolean;
 }
 
 export interface ActivityDeepLink {

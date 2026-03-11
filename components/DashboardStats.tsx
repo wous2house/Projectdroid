@@ -1,15 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { Project, Customer, Prices, ProjectStatus } from '../types';
+import { Project, Customer, Prices, ProjectStatus, Activity, User } from '../types';
 import { calculatePrice, getExpectedExpenses, REQ_LABELS } from './RequirementsEditor';
-import { BarChart3, PieChart, TrendingUp, TrendingDown, Euro, Wallet, CheckCircle, Briefcase, Users, Layout, X, ChevronRight } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, TrendingDown, Euro, Wallet, CheckCircle, Briefcase, Users, Layout, X, ChevronRight, Clock } from 'lucide-react';
 import { PROJECT_STATUS_COLORS } from '../constants';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
 
 interface DashboardStatsProps {
   projects: Project[];
   customers: Customer[];
   prices: Prices;
+  activities?: Activity[];
+  users?: User[];
   onSelectProject?: (id: string) => void;
 }
 
@@ -19,7 +21,7 @@ interface DetailModalData {
   isCurrency?: boolean;
 }
 
-const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, prices, onSelectProject }) => {
+const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, prices, activities = [], users = [], onSelectProject }) => {
   const [detailModal, setDetailModal] = useState<DetailModalData | null>(null);
 
   const formatCurrency = (amount: number) => {
@@ -183,6 +185,37 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, pr
     return Object.entries(data).sort((a, b) => a[1].sortKey.localeCompare(b[1].sortKey));
   }, [filteredProjects, prices]);
 
+  const recentProjects = useMemo(() => {
+    const projectIds = new Set<string>();
+    const recent: Project[] = [];
+    
+    const sortedActivities = [...activities].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    for (const activity of sortedActivities) {
+      if (activity.projectId && !projectIds.has(activity.projectId)) {
+        const project = projects.find(p => p.id === activity.projectId);
+        if (project) {
+          projectIds.add(activity.projectId);
+          recent.push(project);
+          if (recent.length === 3) break;
+        }
+      }
+    }
+    
+    if (recent.length < 3) {
+      const sortedProjects = [...projects].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      for (const project of sortedProjects) {
+        if (!projectIds.has(project.id)) {
+          projectIds.add(project.id);
+          recent.push(project);
+          if (recent.length === 3) break;
+        }
+      }
+    }
+    
+    return recent;
+  }, [activities, projects]);
+
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20">
       <div className="flex items-center justify-between">
@@ -256,6 +289,74 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, pr
           <h3 className="text-xl font-black text-text-main dark:text-white truncate w-full group-hover:text-danger transition-colors">{formatCurrency(financials.periodicExpenses)} <span className="text-[10px] text-text-muted">/jr</span></h3>
         </div>
       </div>
+
+      {recentProjects.length > 0 && (
+        <div className="space-y-6">
+          <div className="flex items-center space-x-3 px-2">
+            <Clock className="w-5 h-5 text-text-muted" />
+            <h3 className="text-sm font-black uppercase tracking-widest text-text-muted">Recent Gewerkte Projecten</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {recentProjects.map(project => {
+              const customer = customers.find(c => c.id === project.customerId);
+              const customerName = customer?.name || 'Geen klant';
+              const teamMembers = (project.team || []).map(id => users.find(u => u.id === id)).filter(Boolean);
+
+              return (
+                <div 
+                  key={project.id}
+                  onClick={() => onSelectProject && onSelectProject(project.id)}
+                  className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 p-6 rounded-[32px] shadow-sm group hover:border-primary/50 transition-all cursor-pointer flex flex-col justify-between min-h-[140px]"
+                >
+                  <div className="mb-4">
+                    <div className="flex justify-between items-start mb-4">
+                      <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider ${PROJECT_STATUS_COLORS[project.status as ProjectStatus]}`}>
+                        {project.status}
+                      </span>
+                      <ChevronRight className="w-5 h-5 text-text-muted opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all group-hover:translate-x-1" />
+                    </div>
+                    <h4 className="font-black text-lg text-text-main dark:text-white group-hover:text-primary transition-colors line-clamp-1">{project.name}</h4>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-white/5 mt-auto gap-4">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      {customer?.logo ? (
+                        <img src={customer.logo} alt={customerName} className="w-5 h-5 rounded-md object-cover border border-slate-200 dark:border-white/10 bg-white flex-shrink-0" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-md bg-slate-100 dark:bg-dark/50 flex items-center justify-center text-[9px] font-black text-text-muted uppercase flex-shrink-0">
+                          {customerName.substring(0, 2)}
+                        </div>
+                      )}
+                      <p className="text-xs font-bold text-text-muted uppercase tracking-widest opacity-70 truncate">
+                        {customerName}
+                      </p>
+                    </div>
+
+                    {teamMembers.length > 0 && (
+                      <div className="flex -space-x-2">
+                        {teamMembers.slice(0, 3).map(u => (
+                          <img 
+                            key={u!.id} 
+                            src={u!.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u!.id}`}
+                            className="w-6 h-6 rounded-full border-2 border-white dark:border-dark-card object-cover bg-white shadow-sm"
+                            alt={u!.name}
+                            title={u!.name}
+                          />
+                        ))}
+                        {teamMembers.length > 3 && (
+                          <div className="w-6 h-6 rounded-full border-2 border-white dark:border-dark-card bg-slate-100 dark:bg-dark/80 text-[9px] font-black flex items-center justify-center text-text-muted">
+                            +{teamMembers.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-[40px] p-8 shadow-sm">

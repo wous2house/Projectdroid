@@ -316,6 +316,8 @@ const App: React.FC = () => {
             projects={projects}
             customers={customers}
             prices={prices}
+            activities={activities}
+            users={users}
             onSelectProject={id => { setSelectedProjectId(id); setActiveView('dashboard'); }}
           />
         ) : activeView === 'dashboard' ? (

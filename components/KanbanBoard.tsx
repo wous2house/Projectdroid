@@ -278,6 +278,11 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     const isOverdue = task.status !== TaskStatus.DONE && task.endDate && isPast(new Date(task.endDate));
                     const isTaskDragging = draggedTaskId === task.id;
                     const showPlaceholderBefore = dropIndicator?.phaseId === phase.id && dropIndicator?.index === idx;
+                    
+                    const loggedSeconds = (project.timeEntries || []).filter(e => e.taskId === task.id).reduce((sum, e) => sum + e.durationSeconds, 0);
+                    const loggedHours = (loggedSeconds / 3600).toFixed(1);
+                    const hasLoggedTime = loggedSeconds > 0;
+                    const isOverBudget = task.estimatedHours && parseFloat(loggedHours) > task.estimatedHours;
 
                     return (
                       <React.Fragment key={task.id}>
@@ -294,12 +299,20 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 ${STATUS_COLORS[task.status]}`}>
                               {task.status}
                             </span>
-                            {task.estimatedHours && (
-                              <div className="flex items-center space-x-1.5 text-text-muted dark:text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity">
-                                <Clock className="w-4 h-4" />
-                                <span className="text-[11px] font-black">{task.estimatedHours}u</span>
-                              </div>
-                            )}
+                            <div className="flex items-center space-x-2">
+                              {hasLoggedTime && (
+                                <div className={`flex items-center space-x-1.5 ${isOverBudget ? 'text-danger animate-pulse' : 'text-primary'} opacity-80 group-hover:opacity-100 transition-opacity`}>
+                                  <Clock className="w-3.5 h-3.5" />
+                                  <span className="text-[11px] font-black">{loggedHours}u</span>
+                                </div>
+                              )}
+                              {task.estimatedHours && (
+                                <div className="flex items-center space-x-1 text-text-muted dark:text-slate-400 opacity-50 group-hover:opacity-100 transition-opacity">
+                                  {hasLoggedTime ? <span className="text-[10px] font-bold">/</span> : <Clock className="w-3.5 h-3.5" />}
+                                  <span className="text-[11px] font-black">{task.estimatedHours}u</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           
                           <h4 className="font-black text-base mb-6 text-text-main dark:text-white group-hover:text-primary transition-colors leading-tight tracking-tight font-sans pointer-events-none">
