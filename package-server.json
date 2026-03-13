@@ -1,6 +1,6 @@
 {
   "name": "projectdroid-server",
-  "version": "1.4.5",
+  "version": "1.4.9",
   "description": "Projectdroid Web Server",
   "main": "server.js",
   "type": "module",

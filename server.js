@@ -14,7 +14,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 export async function startServer(config = {}) {
   const app = express();
-  const PORT = config.PORT || process.env.PORT || 3000;
+  const PORT = config.PORT || process.env.PORT || 3001;
   
   // Belangrijk: Gebruik de doorgegeven data path of fallback naar lokale map
   const DATA_DIR = config.PROJECTDROID_DATA_PATH || process.env.PROJECTDROID_DATA_PATH || __dirname;
@@ -196,7 +196,7 @@ export async function startServer(config = {}) {
   const portStr = String(PORT);
   const listenArgs = isNaN(Number(portStr)) 
     ? [portStr] 
-    : [Number(portStr), '0.0.0.0'];
+    : [Number(portStr)];
 
   const server = app.listen(...listenArgs, () => {
     console.log(`[Projectdroid Server] Actief op poort/pipe ${PORT}`);

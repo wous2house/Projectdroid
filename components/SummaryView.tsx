@@ -37,6 +37,9 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
   const [timerTaskId, setTimerTaskId] = useState<string>(project.activeTimerTaskId || '');
   const [timerIsBillable, setTimerIsBillable] = useState<boolean>(project.isTimerBillable ?? true);
 
+  const [editingTimeTaskId, setEditingTimeTaskId] = useState<string | null>(null);
+  const [editTimeValue, setEditTimeValue] = useState<string>('');
+
   const [currentSeconds, setCurrentSeconds] = useState(0);
 
   useEffect(() => {
@@ -104,10 +107,39 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
   };
 
   const formatTime = (totalSeconds: number) => {
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    const isNegative = totalSeconds < 0;
+    const absSeconds = Math.abs(totalSeconds);
+    const h = Math.floor(absSeconds / 3600);
+    const m = Math.floor((absSeconds % 3600) / 60);
+    const s = absSeconds % 60;
+    return `${isNegative ? '-' : ''}${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const saveTime = (taskId: string, oldSeconds: number) => {
+    setEditingTimeTaskId(null);
+    let parts = editTimeValue.split(':').map(n => parseInt(n) || 0);
+    let newSeconds = oldSeconds;
+    if (parts.length === 3) newSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    else if (parts.length === 2) newSeconds = parts[0] * 3600 + parts[1] * 60;
+    else if (parts.length === 1) newSeconds = parts[0] * 3600;
+
+    if (newSeconds !== oldSeconds && !isNaN(newSeconds)) {
+      const diff = newSeconds - oldSeconds;
+      const newEntry: TimeEntry = {
+        id: Math.random().toString(36).substring(2, 11),
+        taskId: taskId,
+        projectId: project.id,
+        startTime: new Date().toISOString(),
+        endTime: new Date().toISOString(),
+        durationSeconds: diff,
+        isBillable: project.isHourlyRateActive ? (project.isTimerBillable ?? true) : false
+      };
+      onUpdateProject({
+        ...project,
+        timeEntries: [...(project.timeEntries || []), newEntry],
+        trackedSeconds: (project.trackedSeconds || 0) + diff
+      });
+    }
   };
 
   const saveRequirements = () => {
@@ -128,7 +160,17 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
     const seconds = taskEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
     const hasBillable = taskEntries.some(e => e.isBillable);
     return { id: task.id, name: task.name, seconds, hasBillable };
-  }).filter(t => t.seconds > 0).sort((a,b) => b.seconds - a.seconds);
+  }).filter(t => t.seconds > 0 || t.seconds < 0);
+
+  const generalEntries = timeEntries.filter(e => e.taskId === '');
+  if (generalEntries.length > 0) {
+    const seconds = generalEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
+    const hasBillable = generalEntries.some(e => e.isBillable);
+    if (seconds !== 0) {
+      timePerTask.push({ id: '', name: 'Algemeen (Geen taak)', seconds, hasBillable });
+    }
+  }
+  timePerTask.sort((a,b) => b.seconds - a.seconds);
   
   const totalTrackedSeconds = timeEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
   const maxSeconds = Math.max(...timePerTask.map(t => t.seconds), 1);
@@ -429,7 +471,30 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
                       <span className="text-text-main dark:text-white truncate">{t.name || 'Algemeen'}</span>
                       {project.isHourlyRateActive && t.hasBillable && <span className="text-[8px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-md uppercase flex-shrink-0">Factuur</span>}
                     </div>
-                    <span className="text-primary font-black font-mono flex-shrink-0">{formatTime(t.seconds)}</span>
+                    {editingTimeTaskId === t.id ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        className="w-20 bg-slate-100 dark:bg-dark/50 text-primary font-black font-mono text-xs px-2 py-1 rounded outline-none border border-primary/30 text-right focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        value={editTimeValue}
+                        onChange={(e) => setEditTimeValue(e.target.value)}
+                        onBlur={() => saveTime(t.id, t.seconds)}
+                        onKeyDown={(e) => e.key === 'Enter' && saveTime(t.id, t.seconds)}
+                      />
+                    ) : (
+                      <span 
+                        className="text-primary font-black font-mono flex-shrink-0 cursor-pointer hover:underline decoration-primary/50 underline-offset-4 transition-all"
+                        onClick={() => {
+                          if (!project.isTimerRunning) {
+                            setEditingTimeTaskId(t.id);
+                            setEditTimeValue(formatTime(t.seconds));
+                          }
+                        }}
+                        title={project.isTimerRunning ? "Stop eerst de timer om de tijd aan te passen" : "Klik om tijd aan te passen (formaat HH:MM:SS of HH:MM of UUur)"}
+                      >
+                        {formatTime(t.seconds)}
+                      </span>
+                    )}
                   </div>
                   <div className="w-full bg-slate-100 dark:bg-dark/60 rounded-full h-2 overflow-hidden">
                     <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${(t.seconds / maxSeconds) * 100}%` }}></div>

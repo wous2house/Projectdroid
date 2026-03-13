@@ -35,8 +35,14 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, customers, activities, 
                           p.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCustomer = filterCustomer === 'all' || p.customerId === filterCustomer;
       return matchesSearch && matchesCustomer;
+    }).sort((a, b) => {
+      const aActivities = activities.filter(act => act.projectId === a.id);
+      const bActivities = activities.filter(act => act.projectId === b.id);
+      const aLast = aActivities.length > 0 ? Math.max(...aActivities.map(act => new Date(act.timestamp).getTime())) : new Date(a.createdAt).getTime();
+      const bLast = bActivities.length > 0 ? Math.max(...bActivities.map(act => new Date(act.timestamp).getTime())) : new Date(b.createdAt).getTime();
+      return bLast - aLast;
     });
-  }, [projects, searchQuery, filterCustomer]);
+  }, [projects, searchQuery, filterCustomer, activities]);
 
   const handleCreate = (projectData: Omit<Project, 'id' | 'createdAt'> | Project) => {
     onCreateProject(projectData as any);

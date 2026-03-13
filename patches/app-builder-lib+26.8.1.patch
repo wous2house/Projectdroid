@@ -1,0 +1,13 @@
+diff --git a/node_modules/app-builder-lib/out/targets/nsis/NsisTarget.js b/node_modules/app-builder-lib/out/targets/nsis/NsisTarget.js
+index 1e4ef94..95c9c6e 100644
+--- a/node_modules/app-builder-lib/out/targets/nsis/NsisTarget.js
++++ b/node_modules/app-builder-lib/out/targets/nsis/NsisTarget.js
+@@ -367,7 +367,7 @@ class NsisTarget extends core_1.Target {
+             }
+         }
+         else {
+-            await (0, wine_1.execWine)(installerPath, null, [], { env: { __COMPAT_LAYER: "RunAsInvoker" } });
++            await (0, wine_1.execWine)(installerPath, null, [], { env: { ...process.env, __COMPAT_LAYER: "RunAsInvoker" } });
+         }
+         await packager.signIf(uninstallerPath);
+         delete defines.BUILD_UNINSTALLER;

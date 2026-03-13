@@ -1,4 +1,3 @@
-
 const { contextBridge, ipcRenderer } = require('electron');
 
 // We gebruiken contextBridge om functies veilig bloot te stellen aan de renderer (React)

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session } from 'electron';
+import { app, BrowserWindow, session, Tray, Menu, nativeImage } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 // Importeer de server direct
@@ -9,8 +9,10 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow;
 let activeServer;
+let tray = null;
+let isQuitting = false;
 
-const SERVER_PORT = 3000;
+const SERVER_PORT = 3001;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -23,11 +25,11 @@ function createWindow() {
     backgroundColor: '#020817',
     show: false,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      devTools: !app.isPackaged
+      devTools: true
     }
   });
 
@@ -44,6 +46,10 @@ function createWindow() {
     mainWindow.show();
   });
 
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer] ${message} (${sourceId}:${line})`);
+  });
+
   if (app.isPackaged) {
     mainWindow.setMenuBarVisibility(false);
   }
@@ -54,7 +60,7 @@ function createWindow() {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self' http://localhost:3000 http://localhost:5173; " +
+          "default-src 'self' http://localhost:3001 http://localhost:5173; " +
           "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://esm.sh; " +
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
           "font-src 'self' https://fonts.gstatic.com; " +
@@ -64,6 +70,8 @@ function createWindow() {
       }
     });
   });
+
+  // mainWindow.on('close') event is removed so the app quits normally when the window is closed.
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -77,6 +85,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
       mainWindow.focus();
     }
   });
@@ -97,14 +106,25 @@ if (!app.requestSingleInstanceLock()) {
     createWindow();
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      } else if (mainWindow) {
+        mainWindow.show();
+      }
     });
   });
 }
 
+// Opschonen voor het afsluiten
+app.on('before-quit', () => {
+  isQuitting = true;
+  if (activeServer) {
+    activeServer.close();
+  }
+});
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    if (activeServer) activeServer.close();
     app.quit();
   }
 });

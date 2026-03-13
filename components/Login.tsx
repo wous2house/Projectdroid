@@ -102,7 +102,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, error: externalError }) => {
 
           <div className="mt-12 pt-8 border-t border-primary/5 dark:border-white/5 text-center">
             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest opacity-40 font-subtitle">
-              &copy; 2026 Projectdroid Professional • Versie 1.4.6
+              &copy; 2026 Projectdroid Professional • Versie 1.5.8
             </p>
           </div>
         </div>
