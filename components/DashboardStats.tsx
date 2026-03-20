@@ -58,10 +58,10 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, pr
         `"${getCustomerName(p.customerId || 'Geen klant').replace(/"/g, '""')}"`,
         p.status,
         new Date(p.createdAt).toLocaleDateString('nl-NL'),
-        projectPrice,
-        projectPeriodicIncome,
-        p.hourlyRate || 0,
-        ((p.trackedSeconds || 0) / 3600).toFixed(2)
+        `"${projectPrice.toString().replace(/\./g, ',')}"`,
+        `"${projectPeriodicIncome.toString().replace(/\./g, ',')}"`,
+        `"${(p.hourlyRate || 0).toString().replace(/\./g, ',')}"`,
+        `"${((p.trackedSeconds || 0) / 3600).toFixed(2).replace(/\./g, ',')}"`
       ].join(',');
     });
 

@@ -182,6 +182,21 @@ const App: React.FC = () => {
   const handleLogin = async (email: string, password: string) => {
     const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
     
+    // Tijdelijke omzeiling voor desktop app (electron/lokaal)
+    if (email.toLowerCase() === 'admin' && password === 'Admin123') {
+        const tempAdmin = {
+            id: 'u-temp-admin',
+            name: 'Tijdelijke Admin',
+            role: 'admin' as const,
+            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
+            email: 'admin'
+        };
+        setCurrentUser(tempAdmin);
+        setLoginError('');
+        addToast('Welkom terug, Tijdelijke Admin!');
+        return;
+    }
+
     if (isElectron) {
       const user = users.find(u => u.email === email && u.password === password);
       if (user) {
