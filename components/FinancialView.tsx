@@ -93,6 +93,10 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
   }, [oneTimeItems]);
 
   const trackedHours = (project.trackedSeconds || 0) / 3600;
+  
+  const unbilledSeconds = (project.timeEntries || []).filter(e => e.isBillable && !e.isInvoiced).reduce((sum, e) => sum + e.durationSeconds, 0);
+  const unbilledHours = unbilledSeconds / 3600;
+
   const hourlyRevenue = project.isHourlyRateActive ? trackedHours * (project.hourlyRate || 0) : 0;
 
   const totalPrice = calculatedOneTimePrice + hourlyRevenue;
@@ -157,6 +161,39 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
 
     return { invoiced, received, totalExpenses, isFullyPaid, receivedPercentage, currentTotalPrice };
   }, [filteredInvoices, filteredExpenses, expandedExpectedExpenses, totalPrice, selectedYear, startYear, project.ignoredOneTime]);
+
+  const handleInvoiceHours = () => {
+    const unbilledEntries = (project.timeEntries || []).filter(e => e.isBillable && !e.isInvoiced);
+    if (unbilledEntries.length === 0) return;
+
+    const unbilledSeconds = unbilledEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
+    const unbilledHours = unbilledSeconds / 3600;
+    const amount = unbilledHours * (project.hourlyRate || 0);
+
+    const invoice: Invoice = {
+      id: Math.random().toString(36).substring(2, 11),
+      description: `Urenfactuur (${unbilledHours.toFixed(2)} uur)`,
+      type: 'amount',
+      amount: amount,
+      percentage: 0,
+      date: new Date().toISOString().split('T')[0],
+      isReceived: false
+    };
+
+    const updatedEntries = (project.timeEntries || []).map(e => {
+      if (e.isBillable && !e.isInvoiced) return { ...e, isInvoiced: true };
+      return e;
+    });
+
+    onUpdate({
+      ...project,
+      invoices: [...invoices, invoice],
+      timeEntries: updatedEntries
+    });
+    
+    logActivity('budget_updated', `Uren gefactureerd: €${amount.toLocaleString()}`, { projectId: project.id, projectName: project.name });
+    addToast('Uren succesvol gefactureerd');
+  };
 
   const handleAddInvoice = () => {
     if (!newInvoice.description || !newInvoice.value) return;
@@ -452,9 +489,6 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
           
           <div className="space-y-1">
             <p className="text-2xl md:text-3xl font-black text-text-main dark:text-white">€{calculatedOneTimePrice.toLocaleString()}</p>
-            {project.priceNote && (
-              <p className="text-xs font-bold text-text-muted dark:text-light/60">{project.priceNote}</p>
-            )}
           </div>
         </div>
 
@@ -465,7 +499,17 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
               <Clock className="w-4 h-4" />
             </div>
             <p className="text-2xl md:text-3xl font-black text-primary">€{hourlyRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-            <p className="text-xs font-bold text-text-muted dark:text-light/60">{trackedHours.toFixed(2)} uur geregistreerd</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-text-muted dark:text-light/60">{trackedHours.toFixed(2)} uur geregistreerd</p>
+              {unbilledHours > 0 && (
+                <button 
+                  onClick={handleInvoiceHours}
+                  className="text-[10px] font-black uppercase tracking-widest bg-primary text-white px-3 py-1.5 rounded-xl shadow-sm shadow-primary/30 hover:scale-105 transition-all"
+                >
+                  Factureer {unbilledHours.toFixed(2)}u
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -952,6 +996,16 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
                   <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between">
                     <span className="text-sm font-black uppercase tracking-widest text-text-main dark:text-white">Totaal Berekend</span>
                     <span className="text-lg font-black text-primary">€{calculatedOneTimePrice.toLocaleString()}</span>
+                  </div>
+                  <div className="pt-6">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-80 block mb-2">Notitie bij prijs</label>
+                    <textarea
+                      value={editPriceNote}
+                      onChange={e => setEditPriceNote(e.target.value)}
+                      onBlur={() => onUpdate({ ...project, priceNote: editPriceNote || undefined })}
+                      className="w-full bg-slate-50 dark:bg-dark/40 border border-slate-200 dark:border-white/10 px-4 py-3 rounded-xl outline-none focus:border-primary font-medium text-sm dark:text-white resize-none h-24"
+                      placeholder="Voeg een notitie of extra uitleg toe..."
+                    />
                   </div>
                 </div>
               )}

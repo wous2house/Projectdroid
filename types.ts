@@ -170,6 +170,7 @@ export interface TimeEntry {
   endTime?: string;
   durationSeconds: number;
   isBillable: boolean;
+  isInvoiced?: boolean;
 }
 
 export interface ActivityDeepLink {

@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Project, ProjectStatus, Customer, User, Prices } from '../types';
 import { X, Calendar, UserPlus, Info, Check, Briefcase, Clock, Euro, AlignLeft } from 'lucide-react';
-import RequirementsEditor, { calculatePrice } from './RequirementsEditor';
+import RequirementsEditor, { getBudgetBreakdown } from './RequirementsEditor';
 
 interface ProjectModalProps {
   project?: Project;
@@ -21,8 +21,6 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ project, customers, users, 
   const [startDate, setStartDate] = useState(project?.startDate || new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(project?.endDate || '');
   const [team, setTeam] = useState<string[]>(project?.team || []);
-  const [totalPrice, setTotalPrice] = useState<string>(project?.totalPrice?.toString() || '');
-  const [priceNote, setPriceNote] = useState<string>(project?.priceNote || '');
   const [isHourlyRateActive, setIsHourlyRateActive] = useState(project?.isHourlyRateActive || false);
   const [hourlyRate, setHourlyRate] = useState<string>(project?.hourlyRate?.toString() || '');
   const [requirements, setRequirements] = useState<string[]>(project?.requirements || []);
@@ -37,12 +35,14 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ project, customers, users, 
     }
   }, [customerId, isHourlyRateActive, customers, hourlyRate]);
 
-  useEffect(() => {
-    const { oneTime } = calculatePrice(requirements, requirementNotes, prices);
-    if (oneTime > 0) {
-      setTotalPrice(oneTime.toString());
-    }
-  }, [requirements, requirementNotes, prices]);
+  const calculatedPrice = useMemo(() => {
+    const breakdown = getBudgetBreakdown(requirements, requirementNotes, project?.lockedPrices || prices);
+    const activeBreakdownOneTime = breakdown.filter(b => !b.isRecurring && b.price > 0 && !(project?.ignoredOneTime || []).includes(b.label));
+    const calcOneTime = activeBreakdownOneTime.reduce((acc, b) => {
+        return acc + ((project?.overriddenOneTime && project.overriddenOneTime[b.label] !== undefined) ? project.overriddenOneTime[b.label] : b.price);
+    }, 0) + (project?.customOneTime || []).reduce((acc, c) => acc + c.amount, 0);
+    return calcOneTime;
+  }, [requirements, requirementNotes, prices, project]);
 
   const toggleTeamMember = (userId: string) => {
     setTeam(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
@@ -51,7 +51,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ project, customers, users, 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    
+
     onSave({
       ...(project || {}),
       name,
@@ -61,8 +61,6 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ project, customers, users, 
       startDate,
       endDate: endDate || undefined,
       team,
-      totalPrice: totalPrice ? parseFloat(totalPrice) : undefined,
-      priceNote: priceNote || undefined,
       isHourlyRateActive,
       hourlyRate: isHourlyRateActive && hourlyRate ? parseFloat(hourlyRate) : undefined,
       requirements,
@@ -77,7 +75,6 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ project, customers, users, 
       owner: project?.owner || 'Projectdroid System'
     });
   };
-
   return (
     <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4 sm:p-8 bg-dark/90 backdrop-blur-xl animate-in fade-in duration-300 font-sans">
       <div className="bg-white dark:bg-dark-card border border-white/10 rounded-[32px] sm:rounded-[48px] w-full max-w-4xl p-8 sm:p-12 shadow-3xl max-h-[90vh] overflow-y-auto scrollbar-hide flex flex-col">
@@ -113,29 +110,18 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ project, customers, users, 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-60 ml-2">Totale Projectprijs (Budget)</label>
-              <div className="relative">
+              <label className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-60 ml-2">Totale Projectprijs (Berekend)</label>
+              <div className="relative opacity-70">
                 <Euro className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
                 <input
                   type="number"
-                  value={totalPrice}
-                  onChange={e => setTotalPrice(e.target.value)}
-                  className="w-full bg-light dark:bg-dark rounded-xl pl-12 pr-6 py-3.5 font-bold text-sm outline-none border border-transparent focus:border-primary dark:text-white"
+                  value={calculatedPrice}
+                  readOnly
+                  disabled
+                  className="w-full bg-light dark:bg-dark rounded-xl pl-12 pr-6 py-3.5 font-bold text-sm outline-none border border-transparent dark:text-white cursor-not-allowed"
                   placeholder="0.00"
                 />
               </div>
-              <input
-                type="text"
-                value={priceNote}
-                onChange={e => setPriceNote(e.target.value)}
-                className="w-full mt-2 bg-light dark:bg-dark rounded-xl px-4 py-2 font-bold text-xs outline-none border border-transparent focus:border-primary dark:text-white"
-                placeholder="Notitie bij prijs (optioneel)"
-              />
-              {parseFloat(totalPrice) > 0 && (
-                <div className="ml-2 mt-1.5 text-[10px] font-bold text-primary/80">
-                  Berekend: € {calculatePrice(requirements, requirementNotes, prices).oneTime.toFixed(2)} eenmalig
-                </div>
-              )}
               <div className="flex items-center justify-between mt-4 bg-slate-50 dark:bg-dark/40 p-3 rounded-xl border border-slate-100 dark:border-white/5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-80 ml-1">Uurtarief Activeren</label>
                 <button

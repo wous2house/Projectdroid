@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Project, Customer, Prices, ProjectStatus, Activity, User } from '../types';
-import { calculatePrice, getExpectedExpenses, REQ_LABELS } from './RequirementsEditor';
+import { calculatePrice, getExpectedExpenses, getBudgetBreakdown, REQ_LABELS } from './RequirementsEditor';
 import { BarChart3, PieChart, TrendingUp, TrendingDown, Euro, Wallet, CheckCircle, Briefcase, Users, Layout, X, ChevronRight, Clock } from 'lucide-react';
 import { PROJECT_STATUS_COLORS } from '../constants';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -40,6 +40,28 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, pr
     return projects.filter(p => [ProjectStatus.GEAKKOORDEERD, ProjectStatus.ACTIEF, ProjectStatus.AFGEROND].includes(p.status));
   }, [projects]);
 
+  const getProjectFinancials = (p: Project) => {
+    const breakdown = getBudgetBreakdown(p.requirements || [], p.requirementNotes || {}, p.lockedPrices || prices);
+    
+    const activeBreakdownOneTime = breakdown.filter(b => !b.isRecurring && b.price > 0 && !(p.ignoredOneTime || []).includes(b.label));
+    const calculatedOneTimePrice = activeBreakdownOneTime.reduce((acc, b) => {
+        return acc + ((p.overriddenOneTime && p.overriddenOneTime[b.label] !== undefined) ? p.overriddenOneTime[b.label] : b.price);
+    }, 0) + (p.customOneTime || []).reduce((acc, c) => acc + c.amount, 0);
+
+    const activeBreakdownRecurring = breakdown.filter(b => b.isRecurring && b.price > 0 && !(p.ignoredRecurring || []).includes(b.label));
+    const calculatedRecurringPrice = activeBreakdownRecurring.reduce((acc, b) => {
+        return acc + ((p.overriddenRecurring && p.overriddenRecurring[b.label] !== undefined) ? p.overriddenRecurring[b.label] : b.price);
+    }, 0) + (p.customRecurring || []).reduce((acc, c) => acc + c.amount, 0);
+
+    const trackedHours = (p.trackedSeconds || 0) / 3600;
+    const hourlyRevenue = p.isHourlyRateActive ? trackedHours * (p.hourlyRate || 0) : 0;
+    
+    const projectPrice = calculatedOneTimePrice + hourlyRevenue;
+    const projectPeriodicIncome = calculatedRecurringPrice;
+
+    return { projectPrice, projectPeriodicIncome };
+  };
+
   const financials = useMemo(() => {
     let totalRevenue = 0;
     let billed = 0;
@@ -54,19 +76,12 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, pr
     const periodicExpenseProjects: {project: Project; value: number}[] = [];
 
     filteredProjects.forEach(p => {
-      const { oneTime, recurring } = calculatePrice(p.requirements || [], p.requirementNotes || {}, prices);
-      const trackedHours = (p.trackedSeconds || 0) / 3600;
-      const hourlyRevenue = p.isHourlyRateActive ? trackedHours * (p.hourlyRate || 0) : 0;
-      const projectPrice = (p.totalPrice !== undefined ? p.totalPrice : oneTime) + hourlyRevenue;
+      const { projectPrice, projectPeriodicIncome } = getProjectFinancials(p);
       
       totalRevenue += projectPrice;
       if (projectPrice > 0) revProjects.push({ project: p, value: projectPrice });
       
       // Calculate Periodic Income
-      let projectPeriodicIncome = recurring;
-      if (p.customRecurring) {
-        p.customRecurring.forEach(cr => { projectPeriodicIncome += cr.amount; });
-      }
       periodicIncome += projectPeriodicIncome;
       if (projectPeriodicIncome > 0) periodicIncomeProjects.push({ project: p, value: projectPeriodicIncome });
 
@@ -169,10 +184,7 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, pr
       if (isNaN(date.getTime())) return;
       const monthYear = format(date, 'MMM yy', { locale: nl });
       const sortKey = format(date, 'yyyy-MM');
-      const { oneTime } = calculatePrice(p.requirements || [], p.requirementNotes || {}, prices);
-      const trackedHours = (p.trackedSeconds || 0) / 3600;
-      const hourlyRevenue = p.isHourlyRateActive ? trackedHours * (p.hourlyRate || 0) : 0;
-      const total = (p.totalPrice !== undefined ? p.totalPrice : oneTime) + hourlyRevenue;
+      const { projectPrice: total } = getProjectFinancials(p);
 
       if (!data[monthYear]) {
         data[monthYear] = { total: 0, sortKey, projects: [] };
@@ -476,7 +488,7 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, pr
       </div>
 
       {detailModal && (
-        <div className="fixed inset-0 z-[7000] flex items-center justify-center p-6 bg-dark/80 backdrop-blur-xl animate-in fade-in">
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 bg-dark/80 backdrop-blur-xl animate-in fade-in">
           <div className="bg-white dark:bg-dark-card border border-white/10 rounded-[40px] p-10 max-w-2xl w-full shadow-3xl animate-in zoom-in-95 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-2xl font-black tracking-tight text-text-main dark:text-white">{detailModal.title}</h3>

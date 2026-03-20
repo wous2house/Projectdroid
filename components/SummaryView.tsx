@@ -155,21 +155,40 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
   };
 
   const timeEntries = project.timeEntries || [];
-  const timePerTask = project.tasks.map(task => {
-    const taskEntries = timeEntries.filter(e => e.taskId === task.id);
-    const seconds = taskEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
-    const hasBillable = taskEntries.some(e => e.isBillable);
-    return { id: task.id, name: task.name, seconds, hasBillable };
+  
+  const groupedEntries: Record<string, TimeEntry[]> = {};
+  timeEntries.forEach(e => {
+    const date = e.startTime ? e.startTime.split('T')[0] : 'Onbekend';
+    const key = `${e.taskId}_${date}`;
+    if (!groupedEntries[key]) groupedEntries[key] = [];
+    groupedEntries[key].push(e);
+  });
+
+  const timePerTask = Object.entries(groupedEntries).map(([key, entries]) => {
+    const parts = key.split('_');
+    const taskId = parts[0];
+    const date = parts.slice(1).join('_');
+
+    let taskName = 'Algemeen (Geen taak)';
+    if (taskId) {
+      const task = (project.tasks || []).find(t => t.id === taskId);
+      if (task) taskName = task.name;
+    }
+
+    const dateObj = date !== 'Onbekend' ? new Date(date) : null;
+    let formattedDate = date;
+    if (dateObj && !isNaN(dateObj.getTime())) {
+      formattedDate = format(dateObj, 'dd MMM yyyy', { locale: nl });
+    }
+    const nameWithDate = `${taskName} - ${formattedDate}`;
+
+    const seconds = entries.reduce((sum, e) => sum + e.durationSeconds, 0);
+    const hasBillable = entries.some(e => e.isBillable && !e.isInvoiced);
+    const hasInvoiced = entries.some(e => e.isInvoiced);
+    
+    return { id: key, taskId, name: nameWithDate, seconds, hasBillable, hasInvoiced };
   }).filter(t => t.seconds > 0 || t.seconds < 0);
 
-  const generalEntries = timeEntries.filter(e => e.taskId === '');
-  if (generalEntries.length > 0) {
-    const seconds = generalEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
-    const hasBillable = generalEntries.some(e => e.isBillable);
-    if (seconds !== 0) {
-      timePerTask.push({ id: '', name: 'Algemeen (Geen taak)', seconds, hasBillable });
-    }
-  }
   timePerTask.sort((a,b) => b.seconds - a.seconds);
   
   const totalTrackedSeconds = timeEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
@@ -442,7 +461,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
           </div>
 
           <div className="flex flex-col items-center justify-center space-y-6">
-            <div className={`text-4xl md:text-5xl font-black font-mono tracking-wider ${project.isTimerRunning ? 'text-primary animate-pulse' : 'text-text-main dark:text-white'}`}>
+            <div className={`text-3xl md:text-4xl font-black font-mono tracking-wider ${project.isTimerRunning ? 'text-primary animate-pulse' : 'text-text-main dark:text-white'}`}>
               {formatTime(currentSeconds)}
             </div>
             <button 
@@ -470,6 +489,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
                     <div className="flex items-center space-x-3 truncate pr-2">
                       <span className="text-text-main dark:text-white truncate">{t.name || 'Algemeen'}</span>
                       {project.isHourlyRateActive && t.hasBillable && <span className="text-[8px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-md uppercase flex-shrink-0">Factuur</span>}
+                      {project.isHourlyRateActive && t.hasInvoiced && <span className="text-[8px] font-black text-success bg-success/10 px-1.5 py-0.5 rounded-md uppercase flex-shrink-0 flex items-center gap-1" title="Reeds gefactureerd"><CheckCircle2 className="w-2.5 h-2.5" />Gefactureerd</span>}
                     </div>
                     {editingTimeTaskId === t.id ? (
                       <input
