@@ -144,6 +144,14 @@
         .dark [contenteditable]:empty:before {
             color: rgba(255,255,255,0.4);
         }
+
+        @keyframes shrink {
+            0% { width: 100%; }
+            100% { width: 0%; }
+        }
+        .animate-\\[shrink_3s_linear_forwards\\] {
+            animation: shrink 3s linear forwards;
+        }
     </style>
 <script type="importmap">
 {

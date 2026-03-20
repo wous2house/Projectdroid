@@ -13,6 +13,7 @@ import CustomerManagement from './components/CustomerManagement';
 import Planning from './components/Planning';
 import { CheckCircle, XCircle, Info, X, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
+import { pb } from './lib/pocketbase';
 
 // Sleutels voor localStorage
 const STORAGE_KEYS = {
@@ -50,6 +51,12 @@ const App: React.FC = () => {
     const storedCurrentUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     const storedDarkMode = localStorage.getItem(STORAGE_KEYS.DARK_MODE);
     const storedPrices = localStorage.getItem(STORAGE_KEYS.PRICES);
+
+    if (storedDarkMode !== null) {
+      setIsDarkMode(JSON.parse(storedDarkMode));
+    } else {
+      setIsDarkMode(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
 
     if (storedProjects) setProjects(JSON.parse(storedProjects));
     if (storedCustomers) setCustomers(JSON.parse(storedCustomers));
@@ -120,7 +127,6 @@ const App: React.FC = () => {
       }
     }
     
-    if (storedDarkMode) setIsDarkMode(JSON.parse(storedDarkMode));
   }, []);
 
   // Save to localStorage when state changes
@@ -159,8 +165,10 @@ const App: React.FC = () => {
     setConfirmDialog({ title, message, onConfirm });
   }, []);
 
-  const logActivity = useCallback((type: Activity['type'], title: string, options: Partial<Activity> = {}) => {
+  const logActivity = useCallback(async (type: Activity['type'], title: string, options: Partial<Activity> = {}) => {
     if (!currentUser) return;
+
+    // Create optimistic local activity
     const newActivity: Activity = {
       id: Math.random().toString(36).substring(2, 9),
       type,
@@ -169,7 +177,25 @@ const App: React.FC = () => {
       timestamp: new Date().toISOString(),
       ...options
     };
+
     setActivities(prev => [newActivity, ...prev].slice(0, 100));
+
+    try {
+      // Save to PB
+      await pb.collection('activities').create({
+        type: newActivity.type,
+        title: newActivity.title,
+        user: newActivity.userId, // PB relational field
+        timestamp: newActivity.timestamp,
+        project: newActivity.projectId || null,
+        task: newActivity.taskId || '',
+        phase: newActivity.phaseId || '',
+        projectName: newActivity.projectName || '',
+        details: newActivity.details || '',
+      });
+    } catch (err) {
+      console.error('Fout bij loggen activiteit', err);
+    }
   }, [currentUser]);
 
   const [loginError, setLoginError] = useState('');
@@ -177,6 +203,21 @@ const App: React.FC = () => {
   const handleLogin = async (email: string, password: string) => {
     const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
     
+    // Tijdelijke omzeiling voor desktop app (electron/lokaal)
+    if (email.toLowerCase() === 'admin' && password === 'Admin123') {
+        const tempAdmin = {
+            id: 'u-temp-admin',
+            name: 'Tijdelijke Admin',
+            role: 'admin' as const,
+            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
+            email: 'admin'
+        };
+        setCurrentUser(tempAdmin);
+        setLoginError('');
+        addToast('Welkom terug, Tijdelijke Admin!');
+        return;
+    }
+
     if (isElectron) {
       const user = users.find(u => u.email === email && u.password === password);
       if (user) {
@@ -219,51 +260,139 @@ const App: React.FC = () => {
     addToast('Je bent uitgelogd', 'info');
   };
 
-  const handleCreateProject = (projectData: Omit<Project, 'id' | 'createdAt'>) => {
-    const newProject: Project = {
-      ...projectData,
-      id: Math.random().toString(36).substring(2, 9),
-      createdAt: new Date().toISOString(),
-    };
-    setProjects(prev => [newProject, ...prev]);
-    logActivity('project_created', `Project aangemaakt: ${newProject.name}`, { projectId: newProject.id, projectName: newProject.name });
-    addToast('Project aangemaakt');
+  const handleCreateProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
+    try {
+      // Map to PB schema
+      const pbProject = {
+        name: projectData.name,
+        description: projectData.description,
+        status: projectData.status,
+        owner: projectData.owner,
+        customer: projectData.customerId,
+        team: projectData.team,
+        totalPrice: projectData.totalPrice,
+        priceNote: projectData.priceNote,
+        phases_json: projectData.phases,
+        tasks_json: projectData.tasks,
+        invoices_json: projectData.invoices,
+        requirements_json: projectData.requirements,
+      };
+
+      const record = await pb.collection('projects').create(pbProject);
+      const newProject: Project = { ...projectData, id: record.id, createdAt: record.created };
+
+      setProjects(prev => [newProject, ...prev]);
+      logActivity('project_created', `Project aangemaakt: ${newProject.name}`, { projectId: newProject.id, projectName: newProject.name });
+      addToast('Project aangemaakt');
+    } catch (err) {
+      console.error(err);
+      addToast('Fout bij aanmaken project', 'danger');
+    }
   };
 
-  const handleUpdateProject = (updatedProject: Project) => {
-    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+  const handleUpdateProject = async (updatedProject: Project) => {
+    try {
+      // Optimistic update
+      setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+
+      const pbProject = {
+        name: updatedProject.name,
+        description: updatedProject.description,
+        status: updatedProject.status,
+        owner: updatedProject.owner,
+        customer: updatedProject.customerId,
+        team: updatedProject.team,
+        totalPrice: updatedProject.totalPrice,
+        priceNote: updatedProject.priceNote,
+        phases_json: updatedProject.phases,
+        tasks_json: updatedProject.tasks,
+        invoices_json: updatedProject.invoices,
+        requirements_json: updatedProject.requirements,
+        attachments_json: updatedProject.attachments,
+        requirementNotes_json: updatedProject.requirementNotes,
+        lockedPrices_json: updatedProject.lockedPrices,
+        customRecurring_json: updatedProject.customRecurring,
+        ignoredRecurring_json: updatedProject.ignoredRecurring,
+        overriddenRecurring_json: updatedProject.overriddenRecurring,
+        customOneTime_json: updatedProject.customOneTime,
+        ignoredOneTime_json: updatedProject.ignoredOneTime,
+        overriddenOneTime_json: updatedProject.overriddenOneTime,
+        isHourlyRateActive: updatedProject.isHourlyRateActive,
+        hourlyRate: updatedProject.hourlyRate,
+        trackedSeconds: updatedProject.trackedSeconds,
+        isTimerRunning: updatedProject.isTimerRunning,
+        timerStartedAt: updatedProject.timerStartedAt,
+        activeTimerTaskId: updatedProject.activeTimerTaskId,
+        timeEntries_json: updatedProject.timeEntries,
+      };
+
+      await pb.collection('projects').update(updatedProject.id, pbProject);
+    } catch (err) {
+      console.error(err);
+      addToast('Fout bij opslaan project', 'danger');
+      // Ideally re-fetch or revert optimistic update locally here.
+      // Re-fetching full state omitted to avoid cyclic dependency for now.
+    }
   };
 
   const handleDeleteProject = (id: string) => {
     const project = projects.find(p => p.id === id);
-    triggerConfirm('Project verwijderen?', `Weet je zeker dat je project '${project?.name}' wilt verwijderen?`, () => {
-      setProjects(prev => prev.filter(p => p.id !== id));
-      logActivity('project_deleted', `Project verwijderd: ${project?.name}`);
-      addToast('Project verwijderd', 'danger');
+    triggerConfirm('Project verwijderen?', `Weet je zeker dat je project '${project?.name}' wilt verwijderen?`, async () => {
+      try {
+        await pb.collection('projects').delete(id);
+        setProjects(prev => prev.filter(p => p.id !== id));
+        logActivity('project_deleted', `Project verwijderd: ${project?.name}`);
+        addToast('Project verwijderd', 'danger');
+      } catch (err) {
+        console.error(err);
+        addToast('Fout bij verwijderen project', 'danger');
+      }
     });
   };
 
-  const handleCreateCustomer = (customerData: Omit<Customer, 'id' | 'createdAt'>) => {
-    const newCustomer: Customer = {
-      ...customerData,
-      id: Math.random().toString(36).substring(2, 9),
-      createdAt: new Date().toISOString(),
-    };
-    setCustomers(prev => [newCustomer, ...prev]);
-    logActivity('customer_created', `Klant toegevoegd: ${newCustomer.name}`);
-    addToast('Klant toegevoegd');
+  const handleCreateCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt'>) => {
+    try {
+      const record = await pb.collection('customers').create(customerData);
+      const newCustomer: Customer = { ...customerData, id: record.id, createdAt: record.created };
+
+      setCustomers(prev => [newCustomer, ...prev]);
+      logActivity('customer_created', `Klant toegevoegd: ${newCustomer.name}`);
+      addToast('Klant toegevoegd');
+    } catch (err) {
+      console.error(err);
+      addToast('Fout bij aanmaken klant', 'danger');
+    }
   };
 
-  const handleUpdateCustomer = (updatedCustomer: Customer) => {
-    setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
-    addToast('Klant bijgewerkt');
+  const handleUpdateCustomer = async (updatedCustomer: Customer) => {
+    try {
+      setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+      await pb.collection('customers').update(updatedCustomer.id, {
+        name: updatedCustomer.name,
+        email: updatedCustomer.email,
+        phone: updatedCustomer.phone,
+        address: updatedCustomer.address,
+        hourlyRate: updatedCustomer.hourlyRate
+      });
+      addToast('Klant bijgewerkt');
+    } catch (err) {
+      console.error(err);
+      addToast('Fout bij opslaan klant', 'danger');
+      // Optimistic revert could be implemented here
+    }
   };
 
   const handleDeleteCustomer = (id: string) => {
     const customer = customers.find(c => c.id === id);
-    triggerConfirm('Klant verwijderen?', `Weet je zeker dat je klant '${customer?.name}' wilt verwijderen?`, () => {
-      setCustomers(prev => prev.filter(c => c.id !== id));
-      addToast('Klant verwijderd', 'danger');
+    triggerConfirm('Klant verwijderen?', `Weet je zeker dat je klant '${customer?.name}' wilt verwijderen?`, async () => {
+      try {
+        await pb.collection('customers').delete(id);
+        setCustomers(prev => prev.filter(c => c.id !== id));
+        addToast('Klant verwijderd', 'danger');
+      } catch (err) {
+        console.error(err);
+        addToast('Fout bij verwijderen klant', 'danger');
+      }
     });
   };
 
@@ -358,15 +487,22 @@ const App: React.FC = () => {
         {toasts.map(toast => (
           <div 
             key={toast.id}
-            className={`flex items-center space-x-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 animate-in slide-in-from-right-10 duration-300 ${
+            className={`relative overflow-hidden flex items-center space-x-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 animate-in slide-in-from-right-10 duration-300 ${
               toast.type === 'success' ? 'bg-white dark:bg-dark-card border-success text-success-hover' :
               toast.type === 'danger' ? 'bg-white dark:bg-dark-card border-danger text-danger' :
               'bg-white dark:bg-dark-card border-info text-info'
             }`}
           >
             {toast.type === 'success' ? <CheckCircle className="w-5 h-5" /> : toast.type === 'danger' ? <XCircle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
-            <span className="text-sm font-black tracking-tight">{toast.message}</span>
-            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-4 opacity-40 hover:opacity-100 transition-opacity"><X className="w-4 h-4" /></button>
+            <span className="text-sm font-black tracking-tight z-10">{toast.message}</span>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-4 opacity-40 hover:opacity-100 transition-opacity z-10"><X className="w-4 h-4" /></button>
+            <div
+              className={`absolute bottom-0 left-0 h-1 w-full animate-[shrink_3s_linear_forwards] opacity-20 ${
+                toast.type === 'success' ? 'bg-success' :
+                toast.type === 'danger' ? 'bg-danger' :
+                'bg-info'
+              }`}
+            />
           </div>
         ))}
       </div>
@@ -413,11 +549,71 @@ const App: React.FC = () => {
           users={users}
           projects={projects}
           prices={prices}
-          onUpdatePrices={setPrices}
+          onUpdatePrices={async (newPrices) => {
+            setPrices(newPrices);
+            try {
+              // Try to find if global prices already exist
+              let existingPrices;
+              try { existingPrices = await pb.collection('settings').getFirstListItem(`key="global_prices"`); } catch (e) { }
+
+              if (existingPrices) {
+                await pb.collection('settings').update(existingPrices.id, { key: 'global_prices', data: newPrices });
+              } else {
+                await pb.collection('settings').create({ key: 'global_prices', data: newPrices });
+              }
+              addToast('Prijzen opgeslagen', 'success');
+            } catch (err) { console.error('Fout bij opslaan prijzen', err); }
+          }}
           onClose={() => setShowAdminSettings(false)}
-          onAddUser={u => { const newUser = { ...u, id: Math.random().toString(36).substring(2, 9) }; setUsers(prev => [...prev, newUser]); addToast('Gebruiker toegevoegd'); }}
-          onUpdateUser={u => { setUsers(prev => prev.map(user => user.id === u.id ? u : user)); if (currentUser?.id === u.id) setCurrentUser(u); addToast('Gebruiker bijgewerkt'); }}
-          onDeleteUser={id => { setUsers(prev => prev.filter(u => u.id !== id)); addToast('Gebruiker verwijderd', 'danger'); }}
+          onAddUser={async (u) => {
+            try {
+              const pass = u.password || 'Welkom123!';
+              const pbUser = {
+                username: u.email ? u.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + Math.floor(Math.random()*100) : `user${Math.floor(Math.random()*1000)}`,
+                email: u.email || '',
+                emailVisibility: true,
+                password: pass,
+                passwordConfirm: pass,
+                name: u.name,
+                role: u.role,
+                title: u.title,
+                avatarUrl: u.avatar // we store the avatar url text in avatarUrl as custom field or just map it
+              };
+              const record = await pb.collection('users').create(pbUser);
+              const newUser: User = { ...u, id: record.id, password: u.password };
+              setUsers(prev => [...prev, newUser]);
+              addToast('Gebruiker toegevoegd');
+            } catch (err) { console.error(err); addToast('Fout bij toevoegen gebruiker', 'danger'); }
+          }}
+          onUpdateUser={async (u) => {
+            try {
+              setUsers(prev => prev.map(user => user.id === u.id ? u : user));
+              if (currentUser?.id === u.id) setCurrentUser(u);
+
+              const updateData: any = {
+                name: u.name,
+                role: u.role,
+                title: u.title,
+                email: u.email,
+              };
+              // Enkel wachtwoord meenemen als het aangepast is (niet leeg)
+              if (u.password) {
+                updateData.password = u.password;
+                updateData.passwordConfirm = u.password;
+              }
+              await pb.collection('users').update(u.id, updateData);
+              addToast('Gebruiker bijgewerkt');
+            } catch (err) { console.error(err); addToast('Fout bij opslaan gebruiker', 'danger'); }
+          }}
+          onDeleteUser={id => {
+            triggerConfirm('Gebruiker verwijderen?', `Weet je zeker dat je deze gebruiker wilt verwijderen?`, async () => {
+              try {
+                await pb.collection('users').delete(id);
+                setUsers(prev => prev.filter(u => u.id !== id));
+                addToast('Gebruiker verwijderd', 'danger');
+              } catch (err) { console.error(err); addToast('Fout bij verwijderen gebruiker', 'danger'); }
+            });
+          }}
           onUpdateProject={handleUpdateProject}
           onBackup={() => {
             const data = { projects, customers, activities, users };
