@@ -51,6 +51,12 @@ const App: React.FC = () => {
     const storedDarkMode = localStorage.getItem(STORAGE_KEYS.DARK_MODE);
     const storedPrices = localStorage.getItem(STORAGE_KEYS.PRICES);
 
+    if (storedDarkMode !== null) {
+      setIsDarkMode(JSON.parse(storedDarkMode));
+    } else {
+      setIsDarkMode(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+
     if (storedProjects) setProjects(JSON.parse(storedProjects));
     if (storedCustomers) setCustomers(JSON.parse(storedCustomers));
     if (storedActivities) setActivities(JSON.parse(storedActivities));
@@ -120,7 +126,6 @@ const App: React.FC = () => {
       }
     }
     
-    if (storedDarkMode) setIsDarkMode(JSON.parse(storedDarkMode));
   }, []);
 
   // Save to localStorage when state changes
@@ -358,15 +363,22 @@ const App: React.FC = () => {
         {toasts.map(toast => (
           <div 
             key={toast.id}
-            className={`flex items-center space-x-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 animate-in slide-in-from-right-10 duration-300 ${
+            className={`relative overflow-hidden flex items-center space-x-3 px-6 py-4 rounded-2xl shadow-2xl border-l-4 animate-in slide-in-from-right-10 duration-300 ${
               toast.type === 'success' ? 'bg-white dark:bg-dark-card border-success text-success-hover' :
               toast.type === 'danger' ? 'bg-white dark:bg-dark-card border-danger text-danger' :
               'bg-white dark:bg-dark-card border-info text-info'
             }`}
           >
             {toast.type === 'success' ? <CheckCircle className="w-5 h-5" /> : toast.type === 'danger' ? <XCircle className="w-5 h-5" /> : <Info className="w-5 h-5" />}
-            <span className="text-sm font-black tracking-tight">{toast.message}</span>
-            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-4 opacity-40 hover:opacity-100 transition-opacity"><X className="w-4 h-4" /></button>
+            <span className="text-sm font-black tracking-tight z-10">{toast.message}</span>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-4 opacity-40 hover:opacity-100 transition-opacity z-10"><X className="w-4 h-4" /></button>
+            <div
+              className={`absolute bottom-0 left-0 h-1 w-full animate-[shrink_3s_linear_forwards] opacity-20 ${
+                toast.type === 'success' ? 'bg-success' :
+                toast.type === 'danger' ? 'bg-danger' :
+                'bg-info'
+              }`}
+            />
           </div>
         ))}
       </div>

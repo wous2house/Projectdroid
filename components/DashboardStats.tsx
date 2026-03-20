@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Project, Customer, Prices, ProjectStatus, Activity, User } from '../types';
 import { calculatePrice, getExpectedExpenses, getBudgetBreakdown, REQ_LABELS } from './RequirementsEditor';
-import { BarChart3, PieChart, TrendingUp, TrendingDown, Euro, Wallet, CheckCircle, Briefcase, Users, Layout, X, ChevronRight, Clock } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, TrendingDown, Euro, Wallet, CheckCircle, Briefcase, Users, Layout, X, ChevronRight, Clock, Download } from 'lucide-react';
 import { PROJECT_STATUS_COLORS } from '../constants';
 import { format, formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
@@ -34,6 +34,48 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, pr
   };
 
   const getCategoryName = (key: string) => REQ_LABELS[key] || key;
+
+  const handleExportCSV = () => {
+    if (projects.length === 0) return;
+
+    const headers = [
+      'Project ID',
+      'Naam',
+      'Klant',
+      'Status',
+      'Aangemaakt',
+      'Prijs',
+      'Periodieke Inkomsten',
+      'Uurtarief',
+      'Geregistreerde Uren'
+    ];
+
+    const rows = projects.map(p => {
+      const { projectPrice, projectPeriodicIncome } = getProjectFinancials(p);
+      return [
+        p.id,
+        `"${p.name.replace(/"/g, '""')}"`,
+        `"${getCustomerName(p.customerId || 'Geen klant').replace(/"/g, '""')}"`,
+        p.status,
+        new Date(p.createdAt).toLocaleDateString('nl-NL'),
+        projectPrice,
+        projectPeriodicIncome,
+        p.hourlyRate || 0,
+        ((p.trackedSeconds || 0) / 3600).toFixed(2)
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `projecten_export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // Filter the projects to only include active/completed/approved statuses for stats
   const filteredProjects = useMemo(() => {
@@ -232,6 +274,13 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ projects, customers, pr
     <div className="space-y-10 animate-in fade-in duration-700 pb-20">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-black text-text-main dark:text-white tracking-tighter">Dashboard & Statistieken</h2>
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center space-x-2 bg-primary/10 text-primary hover:bg-primary hover:text-white px-5 py-2.5 rounded-2xl transition-all font-bold text-sm shadow-sm"
+        >
+          <Download className="w-4 h-4" />
+          <span>Export CSV</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
