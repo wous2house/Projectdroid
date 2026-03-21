@@ -45,7 +45,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, customers, activities, 
   }, [projects, searchQuery, filterCustomer, activities]);
 
   const handleCreate = (projectData: Omit<Project, 'id' | 'createdAt'> | Project) => {
-    onCreateProject(projectData as any);
+    onCreateProject(projectData);
     setShowCreateModal(false);
     onCloseForcedModal?.();
   };

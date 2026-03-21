@@ -210,7 +210,9 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
   };
 
   const handleUpdateProjectDetails = (updatedProject: Project | Omit<Project, 'id' | 'createdAt'>) => {
-    onUpdate(updatedProject as Project);
+    if ('id' in updatedProject) {
+      onUpdate(updatedProject);
+    }
     setIsProjectModalOpen(false);
   };
 
