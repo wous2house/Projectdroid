@@ -171,7 +171,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
     const amount = unbilledHours * (project.hourlyRate || 0);
 
     const invoice: Invoice = {
-      id: Math.random().toString(36).substring(2, 11),
+      id: crypto.randomUUID(),
       description: `Urenfactuur (${unbilledHours.toFixed(2)} uur)`,
       type: 'amount',
       amount: amount,
@@ -200,7 +200,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
 
     const val = parseFloat(newInvoice.value);
     const invoice: Invoice = {
-      id: editingInvoiceId || Math.random().toString(36).substring(2, 11),
+      id: editingInvoiceId || crypto.randomUUID(),
       description: newInvoice.description,
       type: newInvoice.type,
       amount: newInvoice.type === 'amount' ? val : 0,
@@ -239,7 +239,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
     if (!newExpense.description || !newExpense.amount) return;
 
     const expense: Expense = {
-      id: editingExpenseId || Math.random().toString(36).substring(2, 11),
+      id: editingExpenseId || crypto.randomUUID(),
       description: newExpense.description,
       amount: parseFloat(newExpense.amount),
       date: newExpense.date,
@@ -293,7 +293,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
       const customList = project.customRecurring || [];
       onUpdate({
         ...project,
-        customRecurring: [...customList, { id: Math.random().toString(36).substring(2, 11), description: newRecurring.description, amount: val }]
+        customRecurring: [...customList, { id: crypto.randomUUID(), description: newRecurring.description, amount: val }]
       });
     }
     setIsAddingRecurring(false);
@@ -344,7 +344,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
       const customList = project.customOneTime || [];
       onUpdate({
         ...project,
-        customOneTime: [...customList, { id: Math.random().toString(36).substring(2, 11), description: newOneTime.description, amount: val }]
+        customOneTime: [...customList, { id: crypto.randomUUID(), description: newOneTime.description, amount: val }]
       });
     }
     setIsAddingOneTime(false);

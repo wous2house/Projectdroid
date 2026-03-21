@@ -41,7 +41,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, initialPhaseId, phases, pro
   const addSubtask = () => {
     if (!newSubtaskName.trim()) return;
     const newSub: Subtask = {
-      id: Math.random().toString(36).substring(2, 11),
+      id: crypto.randomUUID(),
       name: newSubtaskName,
       isCompleted: false,
       assigneeId: undefined
@@ -62,7 +62,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, initialPhaseId, phases, pro
         else if (['xls', 'xlsx', 'csv'].includes(fileExt || '')) fileType = 'xlsx';
         
         const newAttach: Attachment = {
-          id: Math.random().toString(36).substring(2, 11),
+          id: crypto.randomUUID(),
           name: file.name,
           url: reader.result as string,
           type: 'file',
@@ -79,7 +79,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, initialPhaseId, phases, pro
   const addLinkAttachment = () => {
     if (!newAttachData.name.trim() || !newAttachData.url.trim()) return;
     const newAttach: Attachment = {
-      id: Math.random().toString(36).substring(2, 11),
+      id: crypto.randomUUID(),
       name: newAttachData.name,
       url: newAttachData.url,
       type: 'link',
@@ -95,7 +95,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, initialPhaseId, phases, pro
     e.preventDefault();
     if (!name.trim()) return;
     onSave({
-      id: task?.id || Math.random().toString(36).substring(2, 11),
+      id: task?.id || crypto.randomUUID(),
       name,
       description,
       status,

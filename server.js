@@ -1,7 +1,8 @@
 
 import express from 'express';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -99,7 +100,7 @@ export async function startServer(config = {}) {
   app.post('/api/customers', (req, res) => {
     const data = getData();
     data.customers = data.customers || [];
-    const newItem = { ...req.body, id: Math.random().toString(36).substring(2, 11), createdAt: new Date().toISOString() };
+    const newItem = { ...req.body, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     data.customers.push(newItem);
     saveData(data);
     res.status(201).json(newItem);
@@ -122,7 +123,7 @@ export async function startServer(config = {}) {
   app.post('/api/projects', (req, res) => {
     const data = getData();
     data.projects = data.projects || [];
-    const newItem = { ...req.body, id: Math.random().toString(36).substring(2, 11), createdAt: new Date().toISOString() };
+    const newItem = { ...req.body, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     data.projects.push(newItem);
     saveData(data);
     res.status(201).json(newItem);
