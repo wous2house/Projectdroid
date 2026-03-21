@@ -148,7 +148,7 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   const addToast = useCallback((message: string, type: Toast['type'] = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
+    const id = crypto.randomUUID();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
@@ -162,7 +162,7 @@ const App: React.FC = () => {
   const logActivity = useCallback((type: Activity['type'], title: string, options: Partial<Activity> = {}) => {
     if (!currentUser) return;
     const newActivity: Activity = {
-      id: Math.random().toString(36).substring(2, 9),
+      id: crypto.randomUUID(),
       type,
       title,
       userId: currentUser.id,
@@ -222,7 +222,7 @@ const App: React.FC = () => {
   const handleCreateProject = (projectData: Omit<Project, 'id' | 'createdAt'>) => {
     const newProject: Project = {
       ...projectData,
-      id: Math.random().toString(36).substring(2, 9),
+      id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
     };
     setProjects(prev => [newProject, ...prev]);
@@ -246,7 +246,7 @@ const App: React.FC = () => {
   const handleCreateCustomer = (customerData: Omit<Customer, 'id' | 'createdAt'>) => {
     const newCustomer: Customer = {
       ...customerData,
-      id: Math.random().toString(36).substring(2, 9),
+      id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
     };
     setCustomers(prev => [newCustomer, ...prev]);
@@ -415,7 +415,7 @@ const App: React.FC = () => {
           prices={prices}
           onUpdatePrices={setPrices}
           onClose={() => setShowAdminSettings(false)}
-          onAddUser={u => { const newUser = { ...u, id: Math.random().toString(36).substring(2, 9) }; setUsers(prev => [...prev, newUser]); addToast('Gebruiker toegevoegd'); }}
+          onAddUser={u => { const newUser = { ...u, id: crypto.randomUUID() }; setUsers(prev => [...prev, newUser]); addToast('Gebruiker toegevoegd'); }}
           onUpdateUser={u => { setUsers(prev => prev.map(user => user.id === u.id ? u : user)); if (currentUser?.id === u.id) setCurrentUser(u); addToast('Gebruiker bijgewerkt'); }}
           onDeleteUser={id => { setUsers(prev => prev.filter(u => u.id !== id)); addToast('Gebruiker verwijderd', 'danger'); }}
           onUpdateProject={handleUpdateProject}

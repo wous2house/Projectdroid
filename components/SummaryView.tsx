@@ -77,7 +77,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
       const elapsed = Math.floor((now - start) / 1000);
       
       const newEntry: TimeEntry = {
-        id: Math.random().toString(36).substring(2, 11),
+        id: crypto.randomUUID(),
         taskId: project.activeTimerTaskId || '',
         projectId: project.id,
         startTime: project.timerStartedAt!,
@@ -126,7 +126,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
     if (newSeconds !== oldSeconds && !isNaN(newSeconds)) {
       const diff = newSeconds - oldSeconds;
       const newEntry: TimeEntry = {
-        id: Math.random().toString(36).substring(2, 11),
+        id: crypto.randomUUID(),
         taskId: taskId,
         projectId: project.id,
         startTime: new Date().toISOString(),

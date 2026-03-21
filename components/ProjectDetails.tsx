@@ -180,7 +180,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
 
   const handleAddPhase = (name: string) => {
     const newPhase: Phase = {
-      id: Math.random().toString(36).substring(2, 11),
+      id: crypto.randomUUID(),
       name,
       order: project.phases.length
     };
@@ -227,7 +227,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
         else if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(fileExt || '')) fileType = 'image';
 
         const newFile: NoteFile = {
-          id: Math.random().toString(36).substring(2, 11),
+          id: crypto.randomUUID(),
           name: file.name,
           url: reader.result as string,
           fileType: fileType
@@ -257,7 +257,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
       addToast('Bijgewerkt');
     } else {
       const newAt: Attachment = {
-        id: Math.random().toString(36).substring(2, 11),
+        id: crypto.randomUUID(),
         name: newNoteData.name,
         url: '',
         content: finalContent,
