@@ -69,20 +69,6 @@ export async function startServer(config = {}) {
     const { email, password } = req.body;
     const data = getData();
     
-    // Tijdelijke omzeiling / bypass voor demo doeleinden
-    if ((email || '').toLowerCase() === 'admin' && password === 'Admin123') {
-      const adminTempUser = {
-        id: 'u-temp-admin',
-        name: 'Tijdelijke Admin',
-        role: 'admin',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
-        title: 'Beheerder',
-        email: 'admin'
-      };
-      // Return de tijdelijke user, maar let op: de echte data uit data.json wordt gewoon meegeleverd
-      return res.json({ user: adminTempUser, data });
-    }
-
     // Zorg dat users altijd een array is, zelfs als data.json leeg of corrupt is
     const users = data.users || [];
     const normalizedEmail = (email || '').toLowerCase();
