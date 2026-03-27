@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, Edit3, MessageSquare } from 'lucide-react';
 import { Prices, Project } from '../types';
+import { LEVEL2_GROUP, LEVEL3_GROUP, getIndentClass } from '../lib/requirements';
 
 export const calculatePrice = (requirements: string[], notes: Record<string, string>, prices: Prices) => {
   let oneTime = 0;
@@ -224,15 +225,6 @@ export const REQ_ORDER = [
   'wp_wordfence_premium'
 ];
 
-export const LEVEL2_GROUP = ['type_werken_bij', 'type_landing', 'type_corporate'];
-export const LEVEL3_GROUP = ['cms_eigen', 'cms_wp'];
-
-export const getIndentClass = (req: string) => {
-  if (['type_werken_bij', 'type_landing', 'type_corporate', 'wp_rocket', 'wp_umbrella', 'wp_wordfence', 'wp_wordfence_premium'].includes(req)) return 'ml-8 md:ml-12';
-  if (['cms_eigen', 'cms_wp'].includes(req)) return 'ml-16 md:ml-24';
-  if (['eigen_recruitee', 'wp_elementor', 'wp_forms', 'wp_acf', 'wp_code', 'wp_jet', 'wp_smashballoon_pro', 'wp_api_to_posts'].includes(req)) return 'ml-24 md:ml-32';
-  return '';
-};
 
 interface RequirementsEditorProps {
   requirements: string[];
