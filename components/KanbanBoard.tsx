@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Project, Task, TaskStatus, Phase, User } from '../types';
 import { Plus, MoreHorizontal, CheckSquare, AlertCircle, Clock, Check, X, Edit2, Trash2, GripHorizontal } from 'lucide-react';
 import { STATUS_COLORS } from '../constants';
@@ -180,6 +180,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   const sortedPhases = [...project.phases].sort((a, b) => a.order - b.order);
 
+  const loggedSecondsByTask = useMemo(() => {
+    return (project.timeEntries || []).reduce((acc, entry) => {
+      acc[entry.taskId] = (acc[entry.taskId] || 0) + entry.durationSeconds;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [project.timeEntries]);
+
   return (
     <div 
       ref={containerRef}
@@ -279,7 +286,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     const isTaskDragging = draggedTaskId === task.id;
                     const showPlaceholderBefore = dropIndicator?.phaseId === phase.id && dropIndicator?.index === idx;
                     
-                    const loggedSeconds = (project.timeEntries || []).filter(e => e.taskId === task.id).reduce((sum, e) => sum + e.durationSeconds, 0);
+                    const loggedSeconds = loggedSecondsByTask[task.id] || 0;
                     const loggedHours = (loggedSeconds / 3600).toFixed(1);
                     const hasLoggedTime = loggedSeconds > 0;
                     const isOverBudget = task.estimatedHours && parseFloat(loggedHours) > task.estimatedHours;
