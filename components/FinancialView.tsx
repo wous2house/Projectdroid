@@ -5,6 +5,25 @@ import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { getBudgetBreakdown, getExpectedExpenses } from './RequirementsEditor';
 
+interface ExpandedExpectedExpense {
+  id: string;
+  originalId: string;
+  description: string;
+  amount: number;
+  isRecurring: boolean;
+  year: number;
+}
+
+interface RecurringItem {
+  id: string;
+  originalId: string;
+  description: string;
+  amount: number;
+  isCustom: boolean;
+  year: number;
+  isInvoiced: boolean;
+}
+
 interface FinancialViewProps {
   project: Project;
   allProjects: Project[];
@@ -27,7 +46,13 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
   const [isAddingOneTime, setIsAddingOneTime] = useState(false);
   const [showBudgetBreakdown, setShowBudgetBreakdown] = useState(false);
   const [showExpectedExpenses, setShowExpectedExpenses] = useState(false);
-  const [itemActionMenu, setItemActionMenu] = useState<{ type: 'invoice' | 'expense' | 'recurring' | 'expected_expense'; id: string; data: any } | null>(null);
+  const [itemActionMenu, setItemActionMenu] = useState<
+    | { type: 'invoice'; id: string; data: Invoice }
+    | { type: 'expense'; id: string; data: Expense }
+    | { type: 'recurring'; id: string; data: RecurringItem }
+    | { type: 'expected_expense'; id: string; data: ExpandedExpectedExpense }
+    | null
+  >(null);
 
   const [isEditingPrice, setIsEditingPrice] = useState(false);
   const [editPriceValue, setEditPriceValue] = useState(project.totalPrice?.toString() || '');
@@ -104,7 +129,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
   const expenses = project.expenses || [];
 
   const expandedExpectedExpenses = useMemo(() => {
-    const items: any[] = [];
+    const items: ExpandedExpectedExpense[] = [];
     expectedExpenses.forEach(exp => {
       if (exp.isRecurring) {
         availableYears.forEach(year => {
@@ -429,11 +454,11 @@ const FinancialView: React.FC<FinancialViewProps> = ({ project, allProjects, pri
   ];
 
   const recurringItems = useMemo(() => {
-    const items: any[] = [];
+    const items: RecurringItem[] = [];
     baseRecurringItems.forEach(item => {
       availableYears.forEach(year => {
         const descriptionWithYear = `${item.description} (${year})`;
-        const isInvoiced = project.invoices?.some(inv => inv.description === descriptionWithYear);
+        const isInvoiced = !!project.invoices?.some(inv => inv.description === descriptionWithYear);
         items.push({
           ...item,
           id: `${item.id}_${year}`,
