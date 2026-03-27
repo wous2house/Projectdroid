@@ -1,6 +1,6 @@
 {
   "name": "projectdroid",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Professional project management dashboard - Desktop & Web",
   "main": "electron/main.js",
   "type": "module",
@@ -13,7 +13,8 @@
     "server": "node server.js",
     "start": "node server.js",
     "electron:dev": "electron .",
-    "electron:build": "npm run build && node build-electron.js"
+    "electron:build": "npm run build && node build-electron.js",
+    "test": "node --experimental-strip-types --test lib/requirements.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
