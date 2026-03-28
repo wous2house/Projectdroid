@@ -28,6 +28,17 @@ interface ProjectDetailsProps {
 
 type Tab = 'samenvatting' | 'bord' | 'tijdlijn' | 'notities' | 'financieel';
 
+const processHtmlLinks = (html: string | undefined | null) => {
+  if (!html) return '';
+  return html.replace(/<a\s+([^>]*?)>/gi, (match, attributes) => {
+    // Check if target is already specified, preventing false positives if url contains target=
+    if (/\btarget\s*=/i.test(attributes)) {
+      return match;
+    }
+    return `<a target="_blank" rel="noopener noreferrer" ${attributes}>`;
+  });
+};
+
 const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, customers, users, prices, onUpdate, onBack, addToast, triggerConfirm, logActivity, deepLink, onClearDeepLink }) => {
   const [activeTab, setActiveTab] = useState<Tab>('samenvatting');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -426,7 +437,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
                   <div className="flex-grow mb-6 bg-slate-50 dark:bg-dark/40 p-6 rounded-3xl border border-slate-100 dark:border-white/5 overflow-hidden flex flex-col">
                     <div 
                       className="text-xs md:text-sm text-text-muted dark:text-slate-300 line-clamp-[4] leading-relaxed rich-content flex-shrink-0"
-                      dangerouslySetInnerHTML={{ __html: at.content || '' }}
+                      dangerouslySetInnerHTML={{ __html: processHtmlLinks(at.content) }}
                     />
                     
                     {at.files && at.files.length > 0 && (
@@ -571,7 +582,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
                     <div className="bg-slate-50 dark:bg-dark/50 p-10 md:p-14 rounded-[40px] border border-slate-100 dark:border-white/5 shadow-inner space-y-8">
                       <div 
                         className="text-base md:text-lg font-medium leading-relaxed dark:text-slate-200 rich-content prose dark:prose-invert max-w-none"
-                        dangerouslySetInnerHTML={{ __html: viewingNote.content || '' }}
+                        dangerouslySetInnerHTML={{ __html: processHtmlLinks(viewingNote.content) }}
                       />
                       {viewingNote.files && viewingNote.files.length > 0 && (
                         <div className="pt-8 border-t border-slate-200 dark:border-white/10">
