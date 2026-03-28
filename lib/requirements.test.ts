@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
+// @ts-ignore
 import { getIndentClass } from './requirements.ts';
 
 test('getIndentClass returns correct classes for level 1 indentation (actually listed as ml-8)', () => {

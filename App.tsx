@@ -260,15 +260,6 @@ const App: React.FC = () => {
     addToast('Je bent uitgelogd', 'info');
   };
 
-  const handleCreateProject = (projectData: Omit<Project, 'id' | 'createdAt'>) => {
-    const newProject: Project = {
-      ...projectData,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    setProjects(prev => [newProject, ...prev]);
-    logActivity('project_created', `Project aangemaakt: ${newProject.name}`, { projectId: newProject.id, projectName: newProject.name });
-    addToast('Project aangemaakt');
   const handleCreateProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
     try {
       // Map to PB schema
@@ -359,15 +350,6 @@ const App: React.FC = () => {
     });
   };
 
-  const handleCreateCustomer = (customerData: Omit<Customer, 'id' | 'createdAt'>) => {
-    const newCustomer: Customer = {
-      ...customerData,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    setCustomers(prev => [newCustomer, ...prev]);
-    logActivity('customer_created', `Klant toegevoegd: ${newCustomer.name}`);
-    addToast('Klant toegevoegd');
   const handleCreateCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt'>) => {
     try {
       const record = await pb.collection('customers').create(customerData);
@@ -583,9 +565,6 @@ const App: React.FC = () => {
             } catch (err) { console.error('Fout bij opslaan prijzen', err); }
           }}
           onClose={() => setShowAdminSettings(false)}
-          onAddUser={u => { const newUser = { ...u, id: crypto.randomUUID() }; setUsers(prev => [...prev, newUser]); addToast('Gebruiker toegevoegd'); }}
-          onUpdateUser={u => { setUsers(prev => prev.map(user => user.id === u.id ? u : user)); if (currentUser?.id === u.id) setCurrentUser(u); addToast('Gebruiker bijgewerkt'); }}
-          onDeleteUser={id => { setUsers(prev => prev.filter(u => u.id !== id)); addToast('Gebruiker verwijderd', 'danger'); }}
           onAddUser={async (u) => {
             try {
               const pass = u.password || 'Welkom123!';
