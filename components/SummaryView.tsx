@@ -3,7 +3,8 @@ import { Project, TaskStatus, User, Prices, TimeEntry } from '../types';
 import { CheckCircle2, Clock, AlertTriangle, Users, Calendar, TrendingUp, CheckSquare, Edit3, Save, MessageSquare, Check, AlignLeft, ChevronDown, ChevronUp, Play, Square, ToggleLeft, ToggleRight, BarChart3 } from 'lucide-react';
 import { isPast, formatDistanceToNow, format } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import RequirementsEditor, { REQ_LABELS, REQ_ORDER, getIndentClass, calculatePrice } from './RequirementsEditor';
+import RequirementsEditor, { REQ_LABELS, REQ_ORDER, calculatePrice } from './RequirementsEditor';
+import { getIndentClass } from '../lib/requirements';
 
 interface SummaryViewProps {
   project: Project;
