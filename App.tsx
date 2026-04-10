@@ -201,6 +201,8 @@ const App: React.FC = () => {
         ignoredOneTime_json: updatedProject.ignoredOneTime, overriddenOneTime_json: updatedProject.overriddenOneTime,
         isHourlyRateActive: updatedProject.isHourlyRateActive, hourlyRate: updatedProject.hourlyRate,
         trackedSeconds: updatedProject.trackedSeconds, timeEntries_json: updatedProject.timeEntries,
+        isTimerRunning: updatedProject.isTimerRunning, timerStartedAt: updatedProject.timerStartedAt,
+        activeTimerTaskId: updatedProject.activeTimerTaskId, isTimerBillable: updatedProject.isTimerBillable,
       };
       await pb.collection('projects').update(updatedProject.id, payload);
       fetchFullState();
