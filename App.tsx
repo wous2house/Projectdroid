@@ -72,9 +72,13 @@ const App: React.FC = () => {
           ignoredRecurring: p.ignoredRecurring_json || [],
           overriddenRecurring: p.overriddenRecurring_json || {},
           customOneTime: p.customOneTime_json || [],
-          ignoredOneTime: p.ignoredOneTime_json || [],
-          overriddenOneTime: p.overriddenOneTime_json || {},
+          ignoredOneTime_json: p.ignoredOneTime_json || [],
+          overriddenOneTime_json: p.overriddenOneTime_json || {},
           timeEntries: p.timeEntries_json || [],
+          isTimerRunning: p.isTimerRunning || false,
+          timerStartedAt: p.timerStartedAt || undefined,
+          activeTimerTaskId: p.activeTimerTaskId || undefined,
+          isTimerBillable: p.isTimerBillable ?? true,
         })) as unknown as Project[]);
       }
 
@@ -188,6 +192,9 @@ const App: React.FC = () => {
   };
 
   const handleUpdateProject = async (updatedProject: Project) => {
+    // Optimistische update voor directe UI respons
+    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+
     try {
       const payload = {
         name: updatedProject.name, description: updatedProject.description, status: updatedProject.status,
@@ -205,8 +212,14 @@ const App: React.FC = () => {
         activeTimerTaskId: updatedProject.activeTimerTaskId, isTimerBillable: updatedProject.isTimerBillable,
       };
       await pb.collection('projects').update(updatedProject.id, payload);
+      // We hoeven fetchFullState hier niet direct aan te roepen omdat we de state al optimistisch hebben bijgewerkt.
+      // fetchFullState(); 
+    } catch (err) { 
+      console.error(err); 
+      addToast('Fout bij opslaan project', 'danger');
+      // Herstel state bij fout
       fetchFullState();
-    } catch (err) { console.error(err); addToast('Fout bij opslaan project', 'danger'); }
+    }
   };
 
   const handleDeleteProject = (id: string) => {
