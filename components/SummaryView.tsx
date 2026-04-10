@@ -116,7 +116,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
     return `${isNegative ? '-' : ''}${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const saveTime = (taskId: string, oldSeconds: number) => {
+  const saveTime = (groupKey: string, oldSeconds: number) => {
     setEditingTimeTaskId(null);
     let parts = editTimeValue.split(':').map(n => parseInt(n) || 0);
     let newSeconds = oldSeconds;
@@ -125,19 +125,44 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
     else if (parts.length === 1) newSeconds = parts[0] * 3600;
 
     if (newSeconds !== oldSeconds && !isNaN(newSeconds)) {
-      const diff = newSeconds - oldSeconds;
+      const allEntries = [...(project.timeEntries || [])];
+      
+      const groupParts = groupKey.split('_');
+      const taskId = groupParts[0] === 'undefined' ? '' : groupParts[0];
+      const date = groupParts.slice(1).join('_');
+
+      // Filter out all entries belonging to this group
+      const otherEntries = allEntries.filter(e => {
+        const eDate = e.startTime ? e.startTime.split('T')[0] : 'Onbekend';
+        const eKey = `${e.taskId}_${eDate}`;
+        return eKey !== groupKey;
+      });
+
+      // Find the first entry in the group to preserve properties like isBillable/isInvoiced if possible
+      const originalGroupEntries = allEntries.filter(e => {
+        const eDate = e.startTime ? e.startTime.split('T')[0] : 'Onbekend';
+        const eKey = `${e.taskId}_${eDate}`;
+        return eKey === groupKey;
+      });
+      
+      const baseEntry = originalGroupEntries[0];
+
       const newEntry: TimeEntry = {
-        id: crypto.randomUUID(),
+        id: baseEntry?.id || crypto.randomUUID(),
         taskId: taskId,
         projectId: project.id,
-        startTime: new Date().toISOString(),
-        endTime: new Date().toISOString(),
-        durationSeconds: diff,
-        isBillable: project.isHourlyRateActive ? (project.isTimerBillable ?? true) : false
+        startTime: baseEntry?.startTime || (date !== 'Onbekend' ? `${date}T09:00:00Z` : new Date().toISOString()),
+        endTime: baseEntry?.endTime || (date !== 'Onbekend' ? `${date}T10:00:00Z` : new Date().toISOString()),
+        durationSeconds: newSeconds,
+        isBillable: baseEntry?.isBillable ?? (project.isHourlyRateActive ? (project.isTimerBillable ?? true) : false),
+        isInvoiced: baseEntry?.isInvoiced || false
       };
+
+      const diff = newSeconds - oldSeconds;
+
       onUpdateProject({
         ...project,
-        timeEntries: [...(project.timeEntries || []), newEntry],
+        timeEntries: [...otherEntries, newEntry],
         trackedSeconds: (project.trackedSeconds || 0) + diff
       });
     }
