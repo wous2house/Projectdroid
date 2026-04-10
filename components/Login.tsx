@@ -34,7 +34,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, error: externalError }) => {
               <div className="absolute -inset-4 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all duration-700"></div>
               
               <div className="relative bg-white dark:bg-white/10 rounded-[32px] shadow-2xl border border-primary/10 flex items-center justify-center overflow-hidden w-24 h-24 group-hover:scale-105 transition-transform duration-500">
-                <img src="https://webdroids.nl/logo.png" alt="Projectdroid Logo" className="w-full h-full object-cover" />
+                <img src="/icon.svg" alt="Projectdroid Logo" className="w-full h-full object-cover" />
               </div>
             </div>
             
@@ -102,7 +102,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, error: externalError }) => {
 
           <div className="mt-12 pt-8 border-t border-primary/5 dark:border-white/5 text-center">
             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest opacity-40 font-subtitle">
-              &copy; 2026 Projectdroid Professional • Versie 1.6.1
+              &copy; 2026 Projectdroid Professional • Versie 1.7.5
             </p>
           </div>
         </div>

@@ -1,35 +1,26 @@
 {
   "name": "projectdroid",
-  "version": "1.6.2",
-  "description": "Professional project management dashboard - Desktop & Web",
-  "main": "electron/main.js",
+  "version": "1.7.5",
+  "description": "Professional project management dashboard - Online PWA",
   "type": "module",
   "author": "Projectdroid Team",
   "scripts": {
     "postinstall": "patch-package",
-    "dev": "node server.js",
+    "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "server": "node server.js",
-    "start": "node server.js",
-    "electron:dev": "electron .",
-    "electron:build": "npm run build && node build-electron.js",
     "test": "node --experimental-strip-types --test lib/requirements.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
-    "body-parser": "^1.20.3",
     "clsx": "^2.1.1",
-    "cors": "^2.8.6",
     "date-fns": "^4.1.0",
-    "dotenv": "^17.3.1",
-    "express": "^4.21.2",
     "lucide-react": "^0.475.0",
     "pocketbase": "^0.26.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.0.1",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^0.21.1"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",
@@ -37,16 +28,12 @@
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
-    "concurrently": "^9.1.2",
-    "electron": "^35.7.5",
-    "electron-builder": "^26.8.1",
     "patch-package": "^8.0.1",
     "postcss": "^8.5.2",
     "postinstall-postinstall": "^2.1.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
-    "vite": "^6.1.1",
-    "wait-on": "^8.0.2"
+    "vite": "^6.1.1"
   },
   "overrides": {
     "glob": "^10.3.10",
@@ -66,7 +53,7 @@
       "electron/**/*",
       "server.js",
       "package.json",
-      "logo.png",
+      "public/icon.png",
       "tray-icon.ico",
       "node_modules/**/*"
     ],
@@ -74,7 +61,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "logo.png",
+      "icon": "public/icon.png",
       "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
@@ -86,7 +73,7 @@
     },
     "extraResources": [
       {
-        "from": "logo.png",
+        "from": "public/icon.png",
         "to": "."
       },
       {

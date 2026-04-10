@@ -755,7 +755,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({
         </div>
 
         <div className="mt-10 pt-10 border-t border-light dark:border-white/5 flex justify-between items-center shrink-0">
-          <p className="text-[10px] font-black text-text-muted dark:text-white/20 uppercase tracking-[0.2em]">Projectdroid Professional • Versie 1.5.8</p>
+          <p className="text-[10px] font-black text-text-muted dark:text-white/20 uppercase tracking-[0.2em]">Projectdroid Professional • Versie 1.7.5</p>
           <button 
             onClick={onClose}
             className="px-12 py-5 bg-light dark:bg-dark text-text-main dark:text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-white/5 transition-all"

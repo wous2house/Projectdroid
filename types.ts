@@ -119,6 +119,7 @@ export interface Prices {
   type_add_website: number;
   type_edit_website: number;
   type_fix_website: number;
+  hourly_rate: number;
   apiToPostsOptions?: string[];
   dynamicCosts?: string[];
   dynamicPricing?: Record<string, { isDynamic: boolean; isUnlimited: boolean; limit?: number; isAnnual?: boolean }>;

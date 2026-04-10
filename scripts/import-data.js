@@ -3,152 +3,174 @@ import path from 'path';
 import PocketBase from 'pocketbase';
 
 // =========================================================================
-// SCRIPT VOOR HET MIGREREN VAN LOKALE DATA.JSON NAAR POCKETBASE
-// =========================================================================
-// Usage: node scripts/import-data.js
-// Configure the URL and credentials before running if needed.
+// DEFINITIEF IMPORT SCRIPT (v0.23+ compatible)
+// Inclusief conversie van Base64 naar echte bestanden en alle financiële velden.
 // =========================================================================
 
 const pb = new PocketBase('https://db.projectdroid.nl');
+const adminEmail = process.argv[2];
+const adminPass = process.argv[3];
+
+const DEFAULT_PRICES = {
+  type_werken_bij_small: 4500, type_werken_bij_medium: 6500, type_werken_bij_large: 9000,
+  type_landing_standaard: 800, type_landing_premium: 1025,
+  wp_elementor: 62.5, wp_elementor_cost: 540, wp_forms: 62.5, wp_forms_cost: 521,
+  wp_acf: 32, wp_acf_cost: 260, wp_code: 63, wp_code_cost: 130, wp_jet: 70, wp_jet_cost: 652,
+  wp_smashballoon_pro: 42, wp_smashballoon_pro_cost: 42, wp_api_to_posts: 110,
+  wp_api_to_posts_cost: 286, wp_api_to_posts_onetime: 650,
+  onderhoud_light: 500, onderhoud_medium: 750, onderhoud_strong: 975, hourly_rate: 85
+};
+
+if (!adminEmail || !adminPass) {
+  console.error('❌ Gebruik: node scripts/import-data.js <admin-email> <admin-password>');
+  process.exit(1);
+}
+
+function base64ToBlob(base64String) {
+  if (!base64String || !base64String.startsWith('data:')) return null;
+  try {
+    const parts = base64String.split(';base64,');
+    const contentType = parts[0].split(':')[1];
+    const byteCharacters = Buffer.from(parts[1], 'base64');
+    return new Blob([byteCharacters], { type: contentType });
+  } catch (e) { return null; }
+}
 
 async function run() {
-  console.log('Start data migratie...');
+  console.log('🚀 Start volledige data migratie naar PocketBase...');
 
-  // LOGIN ALS ADMIN (vervang dit met je werkelijke admin inlog op je PB instance)
   try {
-    await pb.admins.authWithPassword('jouw-admin@email.nl', 'JouwAdminWachtwoord123');
-    console.log('✅ Succesvol ingelogd als admin');
+    await pb.admins.authWithPassword(adminEmail, adminPass);
+    console.log('✅ Ingelogd als admin.');
   } catch (err) {
-    console.error('❌ Login mislukt. Zorg dat je admin credentials kloppen in dit script!', err.message);
+    console.error('❌ Login mislukt.');
     process.exit(1);
   }
 
-  // Load local data.json
-  const dataPath = path.resolve(process.cwd(), 'data.json');
-  if (!fs.existsSync(dataPath)) {
-    console.error(`❌ Kan data.json niet vinden op ${dataPath}`);
-    process.exit(1);
+  // 0. CLEANUP
+  console.log('\n🧹 Database opschonen...');
+  for (const coll of ['activities', 'projects', 'customers']) {
+    try {
+      const records = await pb.collection(coll).getFullList({ fields: 'id' });
+      for (const r of records) await pb.collection(coll).delete(r.id);
+    } catch (e) {}
   }
 
-  const rawData = fs.readFileSync(dataPath, 'utf8');
-  let data;
-  try {
-    data = JSON.parse(rawData);
-  } catch (err) {
-    console.error('❌ data.json is geen geldige JSON.', err.message);
-    process.exit(1);
-  }
+  const data = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'data.json'), 'utf8'));
+  const idMap = { users: {}, customers: {}, projects: {} };
 
-  console.log(`📦 Gevonden: ${data.users?.length || 0} gebruikers, ${data.customers?.length || 0} klanten, ${data.projects?.length || 0} projecten.`);
-
-  // 1. IMPORT USERS
-  console.log('\n👤 Importeren van gebruikers...');
-  const userMap = {};
+  // 1. USERS
+  console.log('\n👤 Gebruikers verwerken...');
   for (const user of data.users || []) {
     try {
-      const pass = user.password || 'TijdelijkWachtwoord123!';
-      const pbUser = {
-        username: user.email ? user.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + Math.floor(Math.random()*100) : `user${Math.floor(Math.random()*1000)}`,
-        email: user.email || `${user.id}@temp.nl`,
-        emailVisibility: true,
-        password: pass,
-        passwordConfirm: pass,
-        name: user.name,
-        role: user.role,
-        title: user.title,
-      };
+      const email = user.email || `${user.id}@projectdroid.local`;
+      let pbUser;
+      const formData = new FormData();
+      formData.append('name', user.name);
+      formData.append('role', user.role || 'user');
+      formData.append('title', user.title || '');
+      formData.append('bio', user.bio || '');
+      if (user.avatar?.startsWith('data:')) formData.append('avatar', base64ToBlob(user.avatar), 'avatar.png');
 
-      let existing;
-      try { existing = await pb.collection('users').getFirstListItem(`email="${pbUser.email}"`); } catch (e) { }
-
-      let createdUser;
-      if (existing) {
-        console.log(`Gebruiker ${user.email} bestaat al, overslaan of updaten...`);
-        createdUser = existing;
-      } else {
-        createdUser = await pb.collection('users').create(pbUser);
-        console.log(`✅ Gebruiker ${user.name} aangemaakt.`);
+      try {
+        pbUser = await pb.collection('users').getFirstListItem(`email="${email}"`);
+        pbUser = await pb.collection('users').update(pbUser.id, formData);
+      } catch (e) {
+        formData.append('username', (user.name || 'user').toLowerCase().replace(/\s/g, '') + Math.floor(Math.random()*1000));
+        formData.append('email', email);
+        formData.append('password', 'Welkom01!');
+        formData.append('passwordConfirm', 'Welkom01!');
+        pbUser = await pb.collection('users').create(formData);
       }
-      userMap[user.id] = createdUser.id;
-    } catch (err) { console.error(`❌ Fout bij gebruiker ${user.name}:`, err.response?.data || err.message); }
+      idMap.users[user.id] = pbUser.id;
+    } catch (err) { console.error(`❌ Fout bij gebruiker ${user.name}`); }
   }
 
-  // 2. IMPORT CUSTOMERS
-  console.log('\n🏢 Importeren van klanten...');
-  const customerMap = {};
-  for (const customer of data.customers || []) {
+  // 2. CUSTOMERS
+  console.log('\n🏢 Klanten importeren...');
+  for (const c of data.customers || []) {
     try {
-      const pbCustomer = {
-        name: customer.name,
-        email: customer.email,
-        phone: customer.phone,
-        address: customer.address,
-        hourlyRate: customer.hourlyRate,
-      };
-
-      const created = await pb.collection('customers').create(pbCustomer);
-      customerMap[customer.id] = created.id;
-      console.log(`✅ Klant ${customer.name} aangemaakt.`);
-    } catch (err) { console.error(`❌ Fout bij klant ${customer.name}:`, err.response?.data || err.message); }
+      const formData = new FormData();
+      formData.append('name', c.name);
+      formData.append('email', c.email || '');
+      formData.append('phone', c.phone || '');
+      formData.append('address', c.address || '');
+      formData.append('hourlyRate', c.hourlyRate || 0);
+      if (c.logo?.startsWith('data:')) formData.append('logo', base64ToBlob(c.logo), 'logo.png');
+      const created = await pb.collection('customers').create(formData);
+      idMap.customers[c.id] = created.id;
+      console.log(`✅ Klant ${c.name} aangemaakt.`);
+    } catch (err) { console.error(`❌ Fout bij klant ${c.name}`); }
   }
 
-  // 3. IMPORT PROJECTS
-  console.log('\n🚀 Importeren van projecten...');
-  for (const project of data.projects || []) {
+  // 3. PROJECTS (Alle velden!)
+  console.log('\n🚀 Projecten importeren...');
+  for (const p of data.projects || []) {
     try {
-      const ownerId = userMap[project.owner] || project.owner;
-      const customerId = project.customerId ? (customerMap[project.customerId] || project.customerId) : null;
-      const team = (project.team || []).map(tId => userMap[tId] || tId).filter(id => id && id.length > 5);
-
-      const pbProject = {
-        name: project.name,
-        description: project.description,
-        status: project.status,
-        owner: ownerId,
-        customer: customerId,
-        team: team,
-        totalPrice: project.totalPrice,
-        priceNote: project.priceNote,
-        phases_json: project.phases,
-        tasks_json: project.tasks,
-        invoices_json: project.invoices,
-        requirements_json: project.requirements,
+      const payload = {
+        name: p.name,
+        description: p.description || '',
+        status: p.status,
+        owner: idMap.users[p.owner] || Object.values(idMap.users)[0],
+        customer: idMap.customers[p.customerId] || null,
+        team: (p.team || []).map(tid => idMap.users[tid]).filter(Boolean),
+        startDate: p.startDate || null,
+        endDate: p.endDate || null,
+        totalPrice: p.totalPrice || 0,
+        priceNote: p.priceNote || '',
+        phases_json: p.phases || [],
+        tasks_json: p.tasks || [],
+        invoices_json: p.invoices || [],
+        expenses_json: p.expenses || [],
+        requirements_json: p.requirements || [],
+        attachments_json: p.attachments || [],
+        requirementNotes_json: p.requirementNotes || {},
+        lockedPrices_json: p.lockedPrices || null,
+        customRecurring_json: p.customRecurring || [],
+        ignoredRecurring_json: p.ignoredRecurring || [],
+        overriddenRecurring_json: p.overriddenRecurring || {},
+        customOneTime_json: p.customOneTime || [],
+        ignoredOneTime_json: p.ignoredOneTime || [],
+        overriddenOneTime_json: p.overriddenOneTime || {},
+        isHourlyRateActive: p.isHourlyRateActive || false,
+        hourlyRate: p.hourlyRate || 0,
+        trackedSeconds: p.trackedSeconds || 0,
+        timeEntries_json: p.timeEntries || []
       };
-
-      await pb.collection('projects').create(pbProject);
-      console.log(`✅ Project ${project.name} aangemaakt.`);
-    } catch (err) { console.error(`❌ Fout bij project ${project.name}:`, err.response?.data || err.message); }
+      const created = await pb.collection('projects').create(payload);
+      idMap.projects[p.id] = created.id;
+      console.log(`✅ Project ${p.name} aangemaakt.`);
+    } catch (err) { console.error(`❌ Fout bij project ${p.name}:`, err.response?.data || err.message); }
   }
 
-  // 4. IMPORT ACTIVITIES
-  console.log('\n📅 Importeren van activiteiten (logs)...');
-  for (const activity of data.activities || []) {
+  // 4. ACTIVITIES
+  console.log('\n📅 Activiteiten verwerken...');
+  for (const a of data.activities || []) {
     try {
-      const pbActivity = {
-        type: activity.type,
-        title: activity.title,
-        user: userMap[activity.userId] || activity.userId, // Referentie naar gebruiker
-        timestamp: activity.timestamp,
-        project: activity.projectId || null,
-        task: activity.taskId || '',
-        phase: activity.phaseId || '',
-        projectName: activity.projectName || '',
-        details: activity.details || '',
+      const payload = {
+        type: a.type, title: a.title,
+        user: idMap.users[a.userId] || Object.values(idMap.users)[0],
+        timestamp: a.timestamp,
+        project: idMap.projects[a.projectId] || null,
+        projectName: a.projectName || '', details: a.details || ''
       };
-
-      // Only add project relation if it's a valid 15 char Pocketbase ID format
-      // If we don't have a mapping for project ID (since we didn't save projectMap), we'll skip mapping them here
-      // or we can just leave it empty. We'll leave it out for now to avoid relation errors.
-      delete pbActivity.project;
-
-      await pb.collection('activities').create(pbActivity);
-      console.log(`✅ Activiteit toegevoegd: ${activity.title}`);
-    } catch (err) {
-      console.error(`❌ Fout bij activiteit ${activity.title}:`, err.response?.data || err.message);
-    }
+      await pb.collection('activities').create(payload);
+    } catch (e) {}
   }
 
-  console.log('\n🎉 Migratie voltooid! Bekijk je data in de PocketBase admin (https://db.projectdroid.nl/_/)');
+  // 5. SETTINGS
+  console.log('\n⚙️  Prijzen verwerken...');
+  let p = { ...DEFAULT_PRICES };
+  if (data.prices) p = { ...p, ...data.prices };
+  (data.projects || []).forEach(proj => { if (proj.lockedPrices) p = { ...p, ...proj.lockedPrices }; });
+  try {
+    let existing;
+    try { existing = await pb.collection('settings').getFirstListItem(`key="global_prices"`); } catch (e) {}
+    if (existing) await pb.collection('settings').update(existing.id, { key: 'global_prices', data: p });
+    else await pb.collection('settings').create({ key: 'global_prices', data: p });
+  } catch (e) {}
+
+  console.log('\n🎉 Alles succesvol overgezet!');
 }
 
 run();

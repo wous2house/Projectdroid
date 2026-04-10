@@ -1,1 +1,0 @@
-const { spawn } = require('child_process'); const electron = require('electron'); const child = spawn(electron, ['.'], { stdio: 'pipe', env: { ...process.env, ELECTRON_ENABLE_LOGGING: '1' } }); child.stdout.on('data', data => console.log(data.toString())); child.stderr.on('data', data => console.error(data.toString())); setTimeout(() => child.kill(), 10000);

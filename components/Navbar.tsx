@@ -32,7 +32,7 @@ const Navbar: React.FC<NavbarProps> = ({
               
               <div className="relative bg-white dark:bg-[#0B1E3F] rounded-full shadow-xl border border-primary/10 flex items-center justify-center overflow-hidden w-10 h-10 md:w-13 md:h-13">
                 <img 
-                  src="https://webdroids.nl/logo.png" 
+                  src="/icon.svg" 
                   alt="Projectdroid Logo" 
                   className="w-full h-full object-cover transform group-hover/logo:scale-110 transition-transform duration-500 ease-out bg-white" 
                 />

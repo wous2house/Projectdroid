@@ -27,6 +27,7 @@ export const DEFAULT_PRICES: Prices = {
   type_add_website: 0,
   type_edit_website: 0,
   type_fix_website: 0,
+  hourly_rate: 85,
   apiToPostsOptions: [
     'ForceFlow', 'Ubeeo', 'Recruitee', 'Workday', 'Otys', 'Talent Soft',
     'People XS', 'Visma EasyCruit', 'SAP SuccesFactors', 'Oracle',
