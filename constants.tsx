@@ -39,11 +39,11 @@ export const DEFAULT_PRICES: Prices = {
 };
 
 export const MOCK_USERS: User[] = [
-  { id: 'admin1', name: 'Wouter', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&h=200&auto=format&fit=crop', role: 'admin', title: 'Administrator', password: 'admin', email: 'wouter@webdroids.nl' },
-  { id: 'u1', name: 'Alex Thompson', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&h=200&auto=format&fit=crop', role: 'user', title: 'Senior Developer', password: 'password123', email: 'alex@example.com' },
-  { id: 'u2', name: 'Sarah Chen', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&h=200&auto=format&fit=crop', role: 'user', title: 'UX Designer', password: 'password123', email: 'sarah@example.com' },
-  { id: 'u3', name: 'Marco Rossi', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&h=200&auto=format&fit=crop', role: 'user', title: 'Backend Lead', password: 'password123', email: 'marco@example.com' },
-  { id: 'u4', name: 'Jane Doe', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&h=200&auto=format&fit=crop', role: 'user', title: 'Product Owner', password: 'password123', email: 'jane@example.com' },
+  { id: 'admin1', name: 'Admin', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&h=200&auto=format&fit=crop', role: 'admin', title: 'Administrator', password: '', email: 'admin@example.com' },
+  { id: 'u1', name: 'Alex Thompson', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&h=200&auto=format&fit=crop', role: 'user', title: 'Senior Developer', password: '', email: 'alex@example.com' },
+  { id: 'u2', name: 'Sarah Chen', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&h=200&auto=format&fit=crop', role: 'user', title: 'UX Designer', password: '', email: 'sarah@example.com' },
+  { id: 'u3', name: 'Marco Rossi', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&h=200&auto=format&fit=crop', role: 'user', title: 'Backend Lead', password: '', email: 'marco@example.com' },
+  { id: 'u4', name: 'Jane Doe', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&h=200&auto=format&fit=crop', role: 'user', title: 'Product Owner', password: '', email: 'jane@example.com' },
 ];
 
 export const COLORS = {

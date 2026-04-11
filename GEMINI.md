@@ -1,5 +1,5 @@
 # Beschrijving
-Dit is een projectmanamgement app met klanten, projecten, team/user-beheer en tijdlogging en financiele administratie die tevinden is op projectdroid.nl en die ook als Progressive Web App geinstalleerd moet kunnen worden. De database draait op PocketBase 0.36.7 en is geinstalleerd op db.familiedrive.nl. De app en database draait bij Hostnet, op een VPS waar ik met Plesk toegang toe heb.
+Dit is een projectmanamgement app met klanten, projecten, team/user-beheer en tijdlogging en financiele administratie die als Progressive Web App geinstalleerd moet kunnen worden. De database draait op PocketBase 0.36.7.
 
 ## Instructies
 Toon na elke aanpassing, toevoeging, of fix welke files zijn aangepast zodat ik weet of ik een npm install moet doen of niet. Communiceer in het Nederlands.
