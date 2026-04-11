@@ -1,20 +1,33 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Projectdroid
 
-# Run and deploy your AI Studio app
+Projectdroid is a professional project management dashboard designed as an Online Progressive Web App (PWA). It features comprehensive tools for managing customers, projects, teams, time logging, and financial administration. The application uses a React frontend powered by Vite and PocketBase for backend data storage and retrieval.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/37c7feeb-98b2-4c98-8ec4-826c5287b747
+- **Project Management:** Track projects through various statuses (Proposal, Approved, On Hold, Active, Completed).
+- **Customer Management:** Manage customer details and hourly rates.
+- **Team Management:** User roles (Admin/User) with detailed profile settings.
+- **Time Logging:** Track time spent on tasks and projects.
+- **Financial Administration:** Manage project budgets, invoices, and expenses.
+- **PWA Support:** Can be installed as a Progressive Web App for desktop and mobile use.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js, npm
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Start the development server:
    `npm run dev`
+
+## Setup PocketBase
+
+To setup PocketBase collections locally or on your server, you can use the provided script:
+`node scripts/setup-pocketbase.js <admin-email> <admin-password>`
+To import mock/existing data from `data.json`:
+`node scripts/import-data.js <admin-email> <admin-password>`
+
+## Build
+
+To build the application for production:
+`npm run build`

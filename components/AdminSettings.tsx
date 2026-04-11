@@ -112,7 +112,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({
         avatar: avatarUrl,
         title: formTitle || 'Projectlid',
         email: formEmail || `${formName.toLowerCase().replace(' ', '.')}@webdroids.nl`,
-        password: formPassword || 'password123'
+        password: formPassword || 'Welkom01!'
       });
     }
     
