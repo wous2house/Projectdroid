@@ -118,7 +118,18 @@ const App: React.FC = () => {
     if (storedDarkMode !== null) setIsDarkMode(JSON.parse(storedDarkMode));
     else setIsDarkMode(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-    if (pb.authStore.isValid && pb.authStore.model) {
+    if (import.meta.env.DEV && import.meta.env.VITE_BYPASS_LOGIN === 'true') {
+      const adminMockUser: User = {
+        id: 'mock-admin',
+        name: 'Mock Admin',
+        email: 'admin@test.com',
+        role: 'admin',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mock-admin',
+        title: 'Mock Administrator'
+      };
+      setCurrentUser(adminMockUser);
+      fetchFullState();
+    } else if (pb.authStore.isValid && pb.authStore.model) {
       const u = pb.authStore.model;
       setCurrentUser({
         id: u.id, name: u.name || u.username, email: u.email, role: u.role || 'user',
