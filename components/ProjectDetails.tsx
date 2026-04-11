@@ -341,7 +341,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
       </div>
 
       <div className="min-h-[600px]">
-        {activeTab === 'samenvatting' && <SummaryView project={project} onAddTask={() => { setEditingTask(undefined); setPreselectedPhaseId(undefined); setIsTaskModalOpen(true); }} onEditTask={task => { setEditingTask(task); setPreselectedPhaseId(undefined); setIsTaskModalOpen(true); }} allUsers={users} onUpdateProject={onUpdate} prices={prices} />}
+        {activeTab === 'samenvatting' && <SummaryView project={project} onAddTask={() => { setEditingTask(undefined); setPreselectedPhaseId(undefined); setIsTaskModalOpen(true); }} onEditTask={task => { setEditingTask(task); setPreselectedPhaseId(undefined); setIsTaskModalOpen(true); }} allUsers={users} onUpdateProject={onUpdate} prices={prices} triggerConfirm={triggerConfirm} />}
         {activeTab === 'bord' && (
           <KanbanBoard 
             project={project} 
