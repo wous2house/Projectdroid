@@ -136,14 +136,25 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (project.isTimerRunning) {
         e.preventDefault();
-        e.returnValue = '';
+        const msg = "Er loopt nog een timer. Als je dit scherm afsluit dan stopt de timer automatisch.";
+        e.returnValue = msg;
+        return msg;
+      }
+    };
+
+    const handlePageHide = () => {
+      if (project.isTimerRunning) {
         const stoppedProject = stopTimer(project);
         onUpdateProject(stoppedProject);
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
   }, [project, onUpdateProject]);
 
   const formatTime = (totalSeconds: number) => {
