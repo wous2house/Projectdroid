@@ -371,7 +371,7 @@ const App: React.FC = () => {
           onClose={() => setShowAdminSettings(false)}
           onAddUser={async (u) => {
             try {
-              const pass = u.password || 'Welkom123!';
+              const pass = u.password || 'ChangeMe123!';
               const username = u.email ? u.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + Math.floor(Math.random()*100) : `user${Math.floor(Math.random()*1000)}`;
               await pb.collection('users').create({ username, email: u.email || '', emailVisibility: true, password: pass, passwordConfirm: pass, name: u.name, role: u.role, title: u.title });
               fetchFullState(); addToast('Gebruiker toegevoegd');
