@@ -129,7 +129,14 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
         finalUrl = 'https://' + finalUrl;
       }
       restoreSelection();
-      document.execCommand('createLink', false, finalUrl);
+
+      const a = document.createElement('a');
+      a.href = finalUrl;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = window.getSelection()?.toString() || finalUrl;
+
+      document.execCommand('insertHTML', false, a.outerHTML);
     }
     setIsLinkPopupOpen(false);
     editorRef.current?.focus();
