@@ -129,7 +129,14 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
         finalUrl = 'https://' + finalUrl;
       }
       restoreSelection();
-      document.execCommand('createLink', false, finalUrl);
+
+      const a = document.createElement('a');
+      a.href = finalUrl;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = window.getSelection()?.toString() || finalUrl;
+
+      document.execCommand('insertHTML', false, a.outerHTML);
     }
     setIsLinkPopupOpen(false);
     editorRef.current?.focus();
@@ -341,7 +348,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
       </div>
 
       <div className="min-h-[600px]">
-        {activeTab === 'samenvatting' && <SummaryView project={project} onAddTask={() => { setEditingTask(undefined); setPreselectedPhaseId(undefined); setIsTaskModalOpen(true); }} onEditTask={task => { setEditingTask(task); setPreselectedPhaseId(undefined); setIsTaskModalOpen(true); }} allUsers={users} onUpdateProject={onUpdate} prices={prices} />}
+        {activeTab === 'samenvatting' && <SummaryView project={project} onAddTask={() => { setEditingTask(undefined); setPreselectedPhaseId(undefined); setIsTaskModalOpen(true); }} onEditTask={task => { setEditingTask(task); setPreselectedPhaseId(undefined); setIsTaskModalOpen(true); }} allUsers={users} onUpdateProject={onUpdate} prices={prices} triggerConfirm={triggerConfirm} />}
         {activeTab === 'bord' && (
           <KanbanBoard 
             project={project} 
@@ -437,7 +444,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
                               {getFileIcon(file.fileType)}
                               <span className="truncate">{file.name}</span>
                             </div>
-                            <a href={file.url} download={file.name} className="hover:text-primary-hover p-1"><ExternalLink className="w-3.5 h-3.5" /></a>
+                            <a href={file.url} download={file.name} target="_blank" rel="noopener noreferrer" className="hover:text-primary-hover p-1"><ExternalLink className="w-3.5 h-3.5" /></a>
                           </div>
                         ))}
                       </div>
@@ -581,6 +588,8 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
                               <a 
                                 key={file.id} 
                                 href={file.url} 
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 download={file.name}
                                 className="flex items-center justify-between p-4 bg-white dark:bg-dark/60 rounded-2xl border border-slate-100 dark:border-white/5 hover:border-primary transition-all group"
                               >

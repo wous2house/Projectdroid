@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Project, TaskStatus, User, Prices, TimeEntry } from '../types';
-import { CheckCircle2, Clock, AlertTriangle, Users, Calendar, TrendingUp, CheckSquare, Edit3, Save, MessageSquare, Check, AlignLeft, ChevronDown, ChevronUp, Play, Square, ToggleLeft, ToggleRight, BarChart3 } from 'lucide-react';
-import { isPast, formatDistanceToNow, format } from 'date-fns';
+import { CheckCircle2, Clock, AlertTriangle, Users, Calendar, TrendingUp, CheckSquare, Edit3, Save, MessageSquare, Check, AlignLeft, ChevronDown, ChevronUp, Play, Square, ToggleLeft, ToggleRight, BarChart3, Trash2 } from 'lucide-react';
+import { isPast, formatDistanceToNow, format, isToday, parseISO } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import RequirementsEditor, { REQ_LABELS, REQ_ORDER, calculatePrice } from './RequirementsEditor';
 import { getIndentClass } from '../lib/requirements';
@@ -13,14 +13,16 @@ interface SummaryViewProps {
   allUsers: User[];
   prices: Prices;
   onUpdateProject: (project: Project) => void;
+  triggerConfirm: (title: string, message: string, onConfirm: () => void) => void;
 }
 
-const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTask, allUsers, prices, onUpdateProject }) => {
+const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTask, allUsers, prices, onUpdateProject, triggerConfirm }) => {
   const [isEditingReqs, setIsEditingReqs] = useState(false);
   const [localReqs, setLocalReqs] = useState<string[]>(project.requirements || []);
   const [localNotes, setLocalNotes] = useState<Record<string, string>>(project.requirementNotes || {});
   const [isWebsiteTypeOpen, setIsWebsiteTypeOpen] = useState(false);
   const [isOnderhoudOpen, setIsOnderhoudOpen] = useState(false);
+  const [isTimeListExpanded, setIsTimeListExpanded] = useState(false);
 
   const [localDescription, setLocalDescription] = useState<string>(project.description || '');
 
@@ -71,31 +73,37 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
     return () => clearInterval(interval);
   }, [project.isTimerRunning, project.timerStartedAt, timerTaskId, project.timeEntries, project.activeTimerTaskId]);
 
+  const stopTimer = (currentProject: Project): Project => {
+    if (!currentProject.isTimerRunning || !currentProject.timerStartedAt) return currentProject;
+
+    const start = new Date(currentProject.timerStartedAt).getTime();
+    const now = Date.now();
+    const elapsed = Math.floor((now - start) / 1000);
+
+    const newEntry: TimeEntry = {
+      id: crypto.randomUUID(),
+      taskId: currentProject.activeTimerTaskId || '',
+      projectId: currentProject.id,
+      startTime: currentProject.timerStartedAt,
+      endTime: new Date().toISOString(),
+      durationSeconds: elapsed,
+      isBillable: currentProject.isHourlyRateActive ? (currentProject.isTimerBillable ?? true) : false
+    };
+
+    return {
+      ...currentProject,
+      isTimerRunning: false,
+      trackedSeconds: (currentProject.trackedSeconds || 0) + elapsed,
+      timerStartedAt: undefined,
+      activeTimerTaskId: undefined,
+      isTimerBillable: undefined,
+      timeEntries: [...(currentProject.timeEntries || []), newEntry]
+    };
+  };
+
   const toggleTimer = () => {
     if (project.isTimerRunning) {
-      const start = new Date(project.timerStartedAt!).getTime();
-      const now = Date.now();
-      const elapsed = Math.floor((now - start) / 1000);
-      
-      const newEntry: TimeEntry = {
-        id: crypto.randomUUID(),
-        taskId: project.activeTimerTaskId || '',
-        projectId: project.id,
-        startTime: project.timerStartedAt!,
-        endTime: new Date().toISOString(),
-        durationSeconds: elapsed,
-        isBillable: project.isHourlyRateActive ? (project.isTimerBillable ?? true) : false
-      };
-
-      onUpdateProject({
-        ...project,
-        isTimerRunning: false,
-        trackedSeconds: (project.trackedSeconds || 0) + elapsed,
-        timerStartedAt: undefined,
-        activeTimerTaskId: undefined,
-        isTimerBillable: undefined,
-        timeEntries: [...(project.timeEntries || []), newEntry]
-      });
+      onUpdateProject(stopTimer(project));
     } else {
       onUpdateProject({
         ...project,
@@ -106,6 +114,37 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
       });
     }
   };
+
+  const handleTaskChange = (newTaskId: string) => {
+    if (project.isTimerRunning && project.activeTimerTaskId !== newTaskId) {
+      // Auto-stop current timer and start for new task
+      const stoppedProject = stopTimer(project);
+      setTimerTaskId(newTaskId);
+      onUpdateProject({
+        ...stoppedProject,
+        isTimerRunning: true,
+        timerStartedAt: new Date().toISOString(),
+        activeTimerTaskId: newTaskId,
+        isTimerBillable: timerIsBillable
+      });
+    } else {
+      setTimerTaskId(newTaskId);
+    }
+  };
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (project.isTimerRunning) {
+        e.preventDefault();
+        e.returnValue = '';
+        const stoppedProject = stopTimer(project);
+        onUpdateProject(stoppedProject);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [project, onUpdateProject]);
 
   const formatTime = (totalSeconds: number) => {
     const isNegative = totalSeconds < 0;
@@ -180,6 +219,32 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
     setIsEditingReqs(false);
   };
 
+  const onDeleteTimeEntryGroup = (groupKey: string) => {
+    triggerConfirm('Tijd verwijderen?', 'Weet je zeker dat je deze gelogde tijd wilt verwijderen?', () => {
+      const allEntries = [...(project.timeEntries || [])];
+
+      const otherEntries = allEntries.filter(e => {
+        const eDate = e.startTime ? e.startTime.split('T')[0] : 'Onbekend';
+        const eKey = `${e.taskId}_${eDate}`;
+        return eKey !== groupKey;
+      });
+
+      const deletedEntries = allEntries.filter(e => {
+        const eDate = e.startTime ? e.startTime.split('T')[0] : 'Onbekend';
+        const eKey = `${e.taskId}_${eDate}`;
+        return eKey === groupKey;
+      });
+
+      const deletedSeconds = deletedEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
+
+      onUpdateProject({
+        ...project,
+        timeEntries: otherEntries,
+        trackedSeconds: (project.trackedSeconds || 0) - deletedSeconds
+      });
+    });
+  };
+
   const timeEntries = project.timeEntries || [];
   
   const groupedEntries: Record<string, TimeEntry[]> = {};
@@ -218,6 +283,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
   timePerTask.sort((a,b) => b.seconds - a.seconds);
   
   const totalTrackedSeconds = timeEntries.reduce((sum, e) => sum + e.durationSeconds, 0);
+  const todayTrackedSeconds = timeEntries.filter(e => e.startTime && isToday(parseISO(e.startTime))).reduce((sum, e) => sum + e.durationSeconds, 0);
   const maxSeconds = Math.max(...timePerTask.map(t => t.seconds), 1);
 
   return (
@@ -466,8 +532,7 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
               <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Koppel aan taak</label>
               <select 
                 value={timerTaskId} 
-                onChange={(e) => setTimerTaskId(e.target.value)}
-                disabled={project.isTimerRunning}
+                onChange={(e) => handleTaskChange(e.target.value)}
                 className="bg-slate-50 dark:bg-dark/50 border border-slate-200 dark:border-white/10 p-3 rounded-2xl outline-none focus:border-primary text-xs font-bold dark:text-white"
               >
                 <option value="">Geen taak (Algemeen)</option>
@@ -502,14 +567,18 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
 
         {timePerTask.length > 0 && (
           <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-white/10 rounded-[40px] p-10 shadow-sm transition-all hover:shadow-xl">
-             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-muted dark:text-slate-400 flex items-center space-x-3 opacity-80 font-subtitle">
+            <div className="flex items-center justify-between mb-8">
+              <button
+                onClick={() => setIsTimeListExpanded(!isTimeListExpanded)}
+                className="text-xs font-black uppercase tracking-[0.2em] text-text-muted dark:text-slate-400 flex items-center space-x-3 opacity-80 font-subtitle hover:text-primary transition-colors focus:outline-none"
+              >
                 <BarChart3 className="w-6 h-6 text-primary" />
-                <span>Tijd per taak</span>
-              </h3>
+                <span>Geschiedenis Tijdregistratie</span>
+                {isTimeListExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
             </div>
             <div className="space-y-5">
-              {timePerTask.map(t => (
+              {isTimeListExpanded && timePerTask.map(t => (
                 <div key={t.id} className="space-y-2">
                   <div className="flex justify-between items-center text-xs font-bold font-subtitle">
                     <div className="flex items-center space-x-3 truncate pr-2">
@@ -541,15 +610,29 @@ const SummaryView: React.FC<SummaryViewProps> = ({ project, onAddTask, onEditTas
                         {formatTime(t.seconds)}
                       </span>
                     )}
+                    <button
+                      onClick={() => onDeleteTimeEntryGroup(t.id)}
+                      disabled={project.isTimerRunning}
+                      className="ml-3 p-1.5 text-danger/40 hover:text-danger hover:bg-danger/10 rounded-lg transition-colors disabled:opacity-50"
+                      title="Verwijder tijdregistratie"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                   <div className="w-full bg-slate-100 dark:bg-dark/60 rounded-full h-2 overflow-hidden">
                     <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${(t.seconds / maxSeconds) * 100}%` }}></div>
                   </div>
                 </div>
               ))}
-              <div className="pt-4 mt-4 border-t border-slate-100 dark:border-white/5 flex justify-between items-center text-sm font-black text-text-main dark:text-white uppercase tracking-wider font-subtitle">
-                <span>Totaal Getimed</span>
-                <span className="font-mono text-primary">{formatTime(totalTrackedSeconds)}</span>
+              <div className="pt-4 mt-4 border-t border-slate-100 dark:border-white/5 space-y-2">
+                <div className="flex justify-between items-center text-sm font-black text-text-main dark:text-white uppercase tracking-wider font-subtitle">
+                  <span>Vandaag Getimed</span>
+                  <span className="font-mono text-primary">{formatTime(todayTrackedSeconds)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-black text-text-muted dark:text-slate-400 uppercase tracking-wider font-subtitle">
+                  <span>Totaal Getimed</span>
+                  <span className="font-mono">{formatTime(totalTrackedSeconds)}</span>
+                </div>
               </div>
             </div>
           </div>
