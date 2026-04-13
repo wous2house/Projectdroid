@@ -78,8 +78,8 @@ async function run() {
       } catch (e) {
         formData.append('username', (user.name || 'user').toLowerCase().replace(/\s/g, '') + Math.floor(Math.random()*1000));
         formData.append('email', email);
-        formData.append('password', 'Welkom01!');
-        formData.append('passwordConfirm', 'Welkom01!');
+        formData.append('password', 'ChangeMe123!');
+        formData.append('passwordConfirm', 'ChangeMe123!');
         pbUser = await pb.collection('users').create(formData);
       }
       idMap.users[user.id] = pbUser.id;
