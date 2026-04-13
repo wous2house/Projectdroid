@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Project, ProjectStatus, TaskStatus, Toast, User, Activity, Customer, ActivityDeepLink, Prices } from './types';
+import { Project, ProjectStatus, TaskStatus, Toast, User, Activity, Customer, ActivityDeepLink, Prices, TimeEntry } from './types';
 import { MOCK_USERS, DEFAULT_PRICES } from './constants';
 import Dashboard from './components/Dashboard';
 import ProjectDetails from './components/ProjectDetails';
@@ -207,6 +207,56 @@ const App: React.FC = () => {
     setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
 
     try {
+      if (updatedProject.isTimerRunning) {
+        let globalUpdateNeeded = false;
+        let locallyUpdatedProjects = projects;
+
+        for (const p of projects) {
+          if (p.isTimerRunning && p.id !== updatedProject.id) {
+            globalUpdateNeeded = true;
+            let timerStartedAt = p.timerStartedAt;
+            if (!timerStartedAt) timerStartedAt = new Date().toISOString();
+
+            const start = new Date(timerStartedAt).getTime();
+            const now = Date.now();
+            const elapsed = Math.floor((now - start) / 1000);
+
+            const newEntry: TimeEntry = {
+              id: crypto.randomUUID(),
+              taskId: p.activeTimerTaskId || '',
+              projectId: p.id,
+              startTime: timerStartedAt,
+              endTime: new Date().toISOString(),
+              durationSeconds: elapsed,
+              isBillable: p.isHourlyRateActive ? (p.isTimerBillable ?? true) : false
+            };
+
+            const stoppedP: Project = {
+              ...p,
+              isTimerRunning: false,
+              trackedSeconds: (p.trackedSeconds || 0) + elapsed,
+              timerStartedAt: undefined,
+              activeTimerTaskId: undefined,
+              isTimerBillable: undefined,
+              timeEntries: [...(p.timeEntries || []), newEntry]
+            };
+
+            const payloadOld = {
+              trackedSeconds: stoppedP.trackedSeconds, timeEntries_json: stoppedP.timeEntries,
+              isTimerRunning: stoppedP.isTimerRunning, timerStartedAt: null,
+              activeTimerTaskId: null, isTimerBillable: stoppedP.isTimerBillable,
+            };
+            await pb.collection('projects').update(p.id, payloadOld);
+
+            locallyUpdatedProjects = locallyUpdatedProjects.map(localP => localP.id === p.id ? stoppedP : localP);
+          }
+        }
+
+        if (globalUpdateNeeded) {
+           setProjects(locallyUpdatedProjects.map(p => p.id === updatedProject.id ? updatedProject : p));
+        }
+      }
+
       const payload = {
         name: updatedProject.name, description: updatedProject.description, status: updatedProject.status,
         owner: updatedProject.owner, customer: updatedProject.customerId, team: updatedProject.team,
