@@ -437,7 +437,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
                               {getFileIcon(file.fileType)}
                               <span className="truncate">{file.name}</span>
                             </div>
-                            <a href={file.url} download={file.name} className="hover:text-primary-hover p-1"><ExternalLink className="w-3.5 h-3.5" /></a>
+                            <a href={file.url} download={file.name} target="_blank" rel="noopener noreferrer" className="hover:text-primary-hover p-1"><ExternalLink className="w-3.5 h-3.5" /></a>
                           </div>
                         ))}
                       </div>
@@ -581,6 +581,8 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
                               <a 
                                 key={file.id} 
                                 href={file.url} 
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 download={file.name}
                                 className="flex items-center justify-between p-4 bg-white dark:bg-dark/60 rounded-2xl border border-slate-100 dark:border-white/5 hover:border-primary transition-all group"
                               >
