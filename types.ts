@@ -25,6 +25,7 @@ export interface Customer {
   address?: string;
   hourlyRate?: number;
   createdAt: string;
+  updated?: string;
 }
 
 export interface NoteFile {
@@ -43,6 +44,7 @@ export interface Attachment {
   files?: NoteFile[];
   fileType?: 'pdf' | 'docx' | 'xlsx' | 'txt' | 'google-doc' | 'google-sheet' | 'web' | 'note' | 'image';
   createdAt: string;
+  updated?: string;
 }
 
 export interface Subtask {
@@ -137,6 +139,7 @@ export interface Project {
   owner: string;
   customerId?: string;
   createdAt: string;
+  updated?: string;
   startDate?: string;
   endDate?: string;
   team?: string[];
