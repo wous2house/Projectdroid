@@ -26,7 +26,7 @@ const CustomerManagement: React.FC<CustomerManagementProps> = ({
   const editFileInputRef = useRef<HTMLInputElement>(null);
 
   const [formState, setFormState] = useState({
-    name: '', logo: '', email: '', phone: '', address: '', hourlyRate: '' as string | number
+    name: '', logo: '', logoFile: null as File | null, email: '', phone: '', address: '', hourlyRate: '' as string | number
   });
 
   // Reset selectie als de klant uit de lijst is verdwenen (bijv. na verwijdering)
@@ -41,7 +41,7 @@ const CustomerManagement: React.FC<CustomerManagementProps> = ({
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormState(prev => ({ ...prev, logo: reader.result as string }));
+        setFormState(prev => ({ ...prev, logo: reader.result as string, logoFile: file }));
       };
       reader.readAsDataURL(file);
     }
@@ -60,13 +60,14 @@ const CustomerManagement: React.FC<CustomerManagementProps> = ({
       onCreateCustomer({ ...formState, hourlyRate: formState.hourlyRate ? Number(formState.hourlyRate) : undefined });
       setShowAddModal(false);
     }
-    setFormState({ name: '', logo: '', email: '', phone: '', address: '', hourlyRate: '' });
+    setFormState({ name: '', logo: '', logoFile: null, email: '', phone: '', address: '', hourlyRate: '' });
   };
 
   const startEdit = (customer: Customer) => {
     setFormState({
       name: customer.name,
       logo: customer.logo,
+      logoFile: null,
       email: customer.email,
       phone: customer.phone,
       address: customer.address || '',
@@ -101,7 +102,7 @@ const CustomerManagement: React.FC<CustomerManagementProps> = ({
         <button 
           onClick={() => {
             setIsEditing(false);
-            setFormState({ name: '', logo: '', email: '', phone: '', address: '', hourlyRate: '' });
+            setFormState({ name: '', logo: '', logoFile: null, email: '', phone: '', address: '', hourlyRate: '' });
             setShowAddModal(true);
           }}
           className="bg-primary text-white px-8 py-4 rounded-[22px] font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-primary/20 flex items-center justify-center space-x-3 w-full sm:w-auto"
