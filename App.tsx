@@ -296,21 +296,38 @@ const App: React.FC = () => {
 
   const handleCreateCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt'>) => {
     try {
-      await pb.collection('customers').create(customerData);
+      const formData = new FormData();
+      formData.append('name', customerData.name);
+      formData.append('email', customerData.email);
+      formData.append('phone', customerData.phone);
+      if (customerData.address !== undefined) formData.append('address', customerData.address);
+      if (customerData.hourlyRate !== undefined) formData.append('hourlyRate', customerData.hourlyRate.toString());
+      if (customerData.logoFile) formData.append('logo', customerData.logoFile);
+
+      await pb.collection('customers').create(formData);
       fetchFullState();
       addToast('Klant toegevoegd');
-    } catch (err) { console.error(err); addToast('Fout bij aanmaken klant', 'danger'); }
+    } catch (err) { console.error('Fout bij aanmaken klant', err); addToast('Fout bij aanmaken klant', 'danger'); }
   };
 
   const handleUpdateCustomer = async (updatedCustomer: Customer) => {
     try {
-      await pb.collection('customers').update(updatedCustomer.id, {
-        name: updatedCustomer.name, email: updatedCustomer.email, phone: updatedCustomer.phone,
-        address: updatedCustomer.address, hourlyRate: updatedCustomer.hourlyRate
-      });
+      const formData = new FormData();
+      formData.append('name', updatedCustomer.name);
+      formData.append('email', updatedCustomer.email);
+      formData.append('phone', updatedCustomer.phone);
+      if (updatedCustomer.address !== undefined) formData.append('address', updatedCustomer.address);
+      if (updatedCustomer.hourlyRate !== undefined) formData.append('hourlyRate', updatedCustomer.hourlyRate.toString());
+      if (updatedCustomer.logoFile) {
+        formData.append('logo', updatedCustomer.logoFile);
+      } else if (updatedCustomer.logo === '') {
+        formData.append('logo', ''); // Allow clearing the logo if supported by PocketBase
+      }
+
+      await pb.collection('customers').update(updatedCustomer.id, formData);
       fetchFullState();
       addToast('Klant bijgewerkt');
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error('Fout bij updaten klant', err); }
   };
 
   const handleDeleteCustomer = (id: string) => {

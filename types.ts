@@ -19,6 +19,7 @@ export interface Customer {
   id: string;
   name: string;
   logo: string;
+  logoFile?: File | null;
   email: string;
   phone: string;
   address?: string;
