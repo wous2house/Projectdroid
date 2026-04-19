@@ -34,6 +34,19 @@ const App: React.FC = () => {
   const [showAdminSettings, setShowAdminSettings] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
+  const sortedProjects = React.useMemo(() => {
+    return [...projects].sort((a, b) => {
+      // 1. Projects where isTimerRunning is true come first
+      if (a.isTimerRunning && !b.isTimerRunning) return -1;
+      if (!a.isTimerRunning && b.isTimerRunning) return 1;
+
+      // 2. If both have the same timer status, sort by updated field descending
+      const dateA = a.updated ? new Date(a.updated).getTime() : 0;
+      const dateB = b.updated ? new Date(b.updated).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [projects]);
+
   const addToast = useCallback((message: string, type: Toast['type'] = 'success') => {
     const id = crypto.randomUUID();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -59,6 +72,7 @@ const App: React.FC = () => {
         setProjects(pRes.value.map(p => ({
           ...p,
           id: p.id,
+          updated: p.updated,
           customerId: p.customer,
           phases: p.phases_json || [],
           tasks: p.tasks_json || [],
@@ -342,7 +356,7 @@ const App: React.FC = () => {
   };
 
   if (!currentUser) return <Login onLogin={handleLogin} error="" />;
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const selectedProject = sortedProjects.find(p => p.id === selectedProjectId);
 
   return (
     <div className="min-h-screen bg-[#F8FAFF] dark:bg-dark transition-colors duration-300">
@@ -357,32 +371,32 @@ const App: React.FC = () => {
       <main className="max-w-[2400px] mx-auto px-4 md:px-8 py-8 md:py-12 pb-32 md:pb-12">
         {selectedProjectId && selectedProject ? (
           <ProjectDetails
-            project={selectedProject} allProjects={projects} customers={customers} users={users} prices={prices}
+            project={selectedProject} allProjects={sortedProjects} customers={customers} users={users} prices={prices}
             onUpdate={handleUpdateProject} onBack={() => setSelectedProjectId(null)}
             addToast={addToast} triggerConfirm={triggerConfirm} logActivity={logActivity}
             deepLink={deepLink} onClearDeepLink={() => setDeepLink(null)}
           />
         ) : activeView === 'stats' ? (
           <DashboardStats
-            projects={projects} customers={customers} prices={prices}
+            projects={sortedProjects} customers={customers} prices={prices}
             activities={activities} users={users}
             onSelectProject={id => { setSelectedProjectId(id); setActiveView('dashboard'); }}
           />
         ) : activeView === 'dashboard' ? (
           <Dashboard 
-            projects={projects} customers={customers} activities={activities} users={users} prices={prices}
+            projects={sortedProjects} customers={customers} activities={activities} users={users} prices={prices}
             onCreateProject={handleCreateProject} onDeleteProject={handleDeleteProject}
             onSelectProject={(id, dl) => { setSelectedProjectId(id); if (dl) setDeepLink(dl); }}
           />
         ) : activeView === 'planning' ? (
           <Planning
-            projects={projects} customers={customers} users={users}
+            projects={sortedProjects} customers={customers} users={users}
             onUpdateProject={handleUpdateProject} onSelectProject={(id) => { setSelectedProjectId(id); }}
             addToast={addToast}
           />
         ) : (
           <CustomerManagement 
-            customers={customers} projects={projects}
+            customers={customers} projects={sortedProjects}
             onCreateCustomer={handleCreateCustomer} onUpdateCustomer={handleUpdateCustomer}
             onDeleteCustomer={handleDeleteCustomer} onSelectProject={id => { setSelectedProjectId(id); setActiveView('dashboard'); }}
             triggerConfirm={triggerConfirm}
@@ -424,7 +438,7 @@ const App: React.FC = () => {
       )}
       {showAdminSettings && (
         <AdminSettings 
-          users={users} projects={projects} prices={prices}
+          users={users} projects={sortedProjects} prices={prices}
           onUpdatePrices={async (newPrices) => {
             setPrices(newPrices);
             try {
@@ -459,7 +473,7 @@ const App: React.FC = () => {
           }}
           onUpdateProject={handleUpdateProject}
           onBackup={() => {
-            const data = { projects, customers, activities, users, prices };
+            const data = { projects: sortedProjects, customers, activities, users, prices };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = `projectdroid-backup-${format(new Date(), 'yyyy-MM-dd')}.json`; a.click();
@@ -490,7 +504,7 @@ const App: React.FC = () => {
             } catch (err) { addToast('Fout bij import', 'danger'); }
           }}
           triggerConfirm={triggerConfirm}
-          getFullState={() => ({ projects, customers, activities, users })}
+          getFullState={() => ({ projects: sortedProjects, customers, activities, users })}
         />
       )}
     </div>
