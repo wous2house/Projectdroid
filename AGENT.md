@@ -56,3 +56,10 @@ Projectdroid is een PWA en moet aanvoelen als een native app.
 We willen snelle iteraties, maar kernfunctionaliteit moet gegarandeerd werken.
 - **Unit Tests:** Behoud en schrijf unit tests (zoals `requirements.test.ts`) voor alle core logica, complexe berekeningen en datamodellen.
 - **Auth Bypass voor UI Testing:** Omdat we met user accounts werken, loop je (de agent) vast op het login-scherm bij UI/E2E tests. Zorg voor een 'Mock Auth State'. Als je de gecompileerde UI moet verifiëren, gebruik dan een methode (bijv. via een `VITE_TEST_MODE=true` variabele) die de app forceert om direct het dashboard te laden als een ingelogde test-gebruiker. Geef in je PR aan hoe je dit getest hebt.
+
+- ## 8. Task Management & Kanban (GitHub Projects)
+We gebruiken GitHub Projects (Kanban) om de voortgang bij te houden. Jij (de agent) helpt proactief met het beheren van dit bord.
+- **Starten van werk:** Wanneer je begint aan een taak of bug, verplaats je de bijbehorende Issue op het Kanban bord naar 'In Progress'.
+- **PR's & Issues Koppelen:** Zorg er *altijd* voor dat je PR gekoppeld is aan de juiste issue. Gebruik de conventie `Closes #123` (of `Fixes #123`) in de PR-omschrijving zodat de issue automatisch sluit bij een merge.
+- **Klaar voor Review:** Als je werk af is, verplaats je de Issue of PR naar de 'Review' kolom op het Kanban bord. Geef in de issue/PR duidelijk aan hoe ik het kan testen.
+- **Nooit Zelf Sluiten:** Sluit nóóit zelfstandig een Issue en verplaats nóóit iets naar 'Done'. Ik (de projecteigenaar) doe de final review en sluit de taak af nadat ik het heb goedgekeurd.
