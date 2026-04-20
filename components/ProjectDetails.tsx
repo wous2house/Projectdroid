@@ -432,7 +432,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, allProjects, c
 
                   <div className="flex-grow mb-6 bg-slate-50 dark:bg-dark/40 p-6 rounded-3xl border border-slate-100 dark:border-white/5 overflow-hidden flex flex-col">
                     <div 
-                      className="text-xs md:text-sm text-text-muted dark:text-slate-300 line-clamp-[4] leading-relaxed rich-content flex-shrink-0"
+                      className="text-xs md:text-sm text-text-muted dark:text-slate-300 line-clamp-[4] leading-relaxed rich-content flex-shrink-0 overflow-y-scroll h-[100%]"
                       dangerouslySetInnerHTML={{ __html: at.content || '' }}
                     />
                     
