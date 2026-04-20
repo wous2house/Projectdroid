@@ -7,6 +7,8 @@
   "scripts": {
     "postinstall": "patch-package",
     "dev": "vite",
+    "dev:all": "npx --yes concurrently \"npm run dev\" \"npm run pocketbase:local\"",
+    "pocketbase:local": "echo 'PocketBase command not found. Please download PocketBase and put the executable in your project root, then run: ./pocketbase serve' && exit 1",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "node --experimental-strip-types --test lib/requirements.test.ts",

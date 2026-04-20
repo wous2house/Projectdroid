@@ -5,7 +5,7 @@ import PocketBase from 'pocketbase';
 // Inclusief alle financiële en uren-gerelateerde velden.
 // =========================================================================
 
-const pb = new PocketBase('https://db.projectdroid.nl');
+const pb = new PocketBase(process.env.POCKETBASE_URL || 'http://127.0.0.1:8090');
 const adminEmail = process.argv[2];
 const adminPass = process.argv[3];
 
