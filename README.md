@@ -20,6 +20,8 @@ Projectdroid is a professional project management dashboard designed as an Onlin
 2. Start the development server:
    `npm run dev`
 
+> **Note on Environments:** By default, the application connects to the development database (`https://db-dev.projectdroid.nl`). This can be overridden by creating a `.env` file based on `.env.example`. For production, you should use `https://db.projectdroid.nl`.
+
 ## Setup PocketBase
 
 To setup PocketBase collections locally or on your server, you can use the provided script:
