@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 // Laad variabelen uit .env.local
 dotenv.config({ path: '.env.local' });
 
-const pb = new PocketBase('http://127.0.0.1:8090');
+const pb = new PocketBase(process.env.POCKETBASE_URL || 'http://127.0.0.1:8090');
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
@@ -41,9 +41,28 @@ async function run() {
     }
   }
 
-  // --- 2. Users aanmaken (Minimaal 20) ---
-  console.log('\n👤 20 Dummy users aanmaken...');
+  // --- 2. Users aanmaken (Minimaal 20 + de lokale test admin) ---
+  console.log('\n👤 Dummy users aanmaken...');
   const userIds = [];
+
+  // Voeg een consistente test user toe om mee in te loggen
+  try {
+    const adminRecord = await pb.collection('users').create({
+      username: 'testadmin',
+      email: ADMIN_EMAIL,
+      emailVisibility: true,
+      password: ADMIN_PASSWORD,
+      passwordConfirm: ADMIN_PASSWORD,
+      name: 'Lokale Test Admin',
+      role: 'admin',
+      title: 'System Administrator',
+    });
+    userIds.push(adminRecord.id);
+    console.log(`✅ Test admin aangemaakt (${ADMIN_EMAIL})`);
+  } catch (err) {
+    console.error('Fout bij maken test admin (bestaat misschien al):', err.message);
+  }
+
   for (let i = 0; i < 20; i++) {
     try {
       const firstName = faker.person.firstName();
