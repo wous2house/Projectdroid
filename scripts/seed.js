@@ -2,17 +2,12 @@ import { faker } from '@faker-js/faker/locale/nl';
 import PocketBase from 'pocketbase';
 import dotenv from 'dotenv';
 
-// Laad variabelen uit .env.local
+// Laad variabelen uit .env.local, of val terug op standaard admin gegevens voor dev omgeving
 dotenv.config({ path: '.env.local' });
 
 const pb = new PocketBase(process.env.POCKETBASE_URL || 'http://127.0.0.1:8090');
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
-if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-  console.error('❌ Zorg dat ADMIN_EMAIL en ADMIN_PASSWORD in .env.local staan.');
-  process.exit(1);
-}
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@example.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
 
 async function run() {
   console.log('🚀 Start database seed...');
