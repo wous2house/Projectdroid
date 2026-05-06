@@ -8,6 +8,8 @@
     "postinstall": "patch-package",
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:staging": "tsc && vite build --mode staging",
+    "build:prod": "tsc && vite build --mode production",
     "preview": "vite preview",
     "test": "node --experimental-strip-types --test lib/requirements.test.ts",
     "seed": "node scripts/seed.js"
